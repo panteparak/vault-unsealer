@@ -59,7 +59,7 @@ runs:
       with:
         # we let the report trigger content trigger a failure using the GitHub Security features.
         args: '-no-fail -fmt sarif -out security/sarif/gosec.sarif ./...'
-    
+
     - name: Generate Gosec JSON report for statistics
       if: contains(inputs.scan-type, 'code') || inputs.scan-type == 'all'
       uses: securego/gosec@master
