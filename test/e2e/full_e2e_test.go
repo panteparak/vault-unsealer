@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -380,9 +381,14 @@ func TestFullE2E(t *testing.T) {
 	stepDuration = time.Since(stepStart)
 	t.Logf("✅ STEP 9 COMPLETED: Unsealing secrets created (took %v)", stepDuration)
 
-	// Step 10: Deploy the operator
-	t.Log("🤖 STEP 10: Deploying Vault Unsealer operator...")
+	// Step 10: Load Docker image into K3s and deploy the operator
+	t.Log("🤖 STEP 10: Loading image and deploying Vault Unsealer operator...")
 	stepStart = time.Now()
+
+	// Export and load the Docker image into K3s
+	if err := loadImageIntoK3s(ctx, k3sContainer); err != nil {
+		t.Fatalf("❌ Failed to load image into K3s: %v", err)
+	}
 
 	if err := deployOperator(ctx, k8sClient); err != nil {
 		t.Fatalf("❌ Failed to deploy operator: %v", err)
@@ -642,7 +648,7 @@ func deployVaultService(ctx context.Context, k8sClient client.Client, networkNam
 			Containers: []corev1.Container{
 				{
 					Name:  "pause",
-					Image: "k8s.gcr.io/pause:3.9",
+					Image: "registry.k8s.io/pause:3.9",
 				},
 			},
 		},
@@ -909,6 +915,36 @@ func testCleanup(ctx context.Context, k8sClient client.Client) error {
 	}
 
 	return fmt.Errorf("VaultUnsealer was not deleted within timeout")
+}
+
+func loadImageIntoK3s(ctx context.Context, k3sContainer testcontainers.Container) error {
+	// Save the Docker image to a tar file
+	saveCmd := []string{"docker", "save", "controller:latest", "-o", "/tmp/controller-latest.tar"}
+	if err := exec.Command(saveCmd[0], saveCmd[1:]...).Run(); err != nil {
+		return fmt.Errorf("failed to save Docker image: %w", err)
+	}
+	defer func() {
+		os.Remove("/tmp/controller-latest.tar")
+	}()
+
+	// Copy the tar file to the K3s container
+	err := k3sContainer.CopyFileToContainer(ctx, "/tmp/controller-latest.tar", "/tmp/controller-latest.tar", 644)
+	if err != nil {
+		return fmt.Errorf("failed to copy image tar to K3s container: %w", err)
+	}
+
+	// Load the image inside K3s
+	exitCode, reader, err := k3sContainer.Exec(ctx, []string{"ctr", "images", "import", "/tmp/controller-latest.tar"})
+	if err != nil {
+		return fmt.Errorf("failed to execute ctr command: %w", err)
+	}
+
+	if exitCode != 0 {
+		output, _ := io.ReadAll(reader)
+		return fmt.Errorf("failed to load image in K3s (exit code %d): %s", exitCode, string(output))
+	}
+
+	return nil
 }
 
 func int32Ptr(i int32) *int32 {

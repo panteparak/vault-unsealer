@@ -212,6 +212,15 @@ cross-compile: manifests generate fmt vet ## Build manager binary for multiple p
 	@GOOS=windows GOARCH=amd64 go build -o bin/manager-windows-amd64.exe cmd/main.go
 	@echo "Cross-compilation complete!"
 
+.PHONY: docker-build-e2e
+docker-build-e2e: build ## Build Docker image for E2E testing.
+	$(CONTAINER_TOOL) build -t controller:latest -f Dockerfile.e2e .
+
+.PHONY: test-e2e-full
+test-e2e-full: docker-build-e2e ## Run comprehensive E2E tests with real Vault deployment.
+	@echo "Running comprehensive E2E tests..."
+	@./test/e2e/run_full_e2e.sh
+
 ##@ Deployment
 
 ifndef ignore-not-found

@@ -39,6 +39,7 @@ import (
 
 	opsv1alpha1 "github.com/panteparak/vault-unsealer/api/v1alpha1"
 	"github.com/panteparak/vault-unsealer/internal/controller"
+	"github.com/panteparak/vault-unsealer/internal/secrets"
 	vaultwebhook "github.com/panteparak/vault-unsealer/internal/webhook"
 	// +kubebuilder:scaffold:imports
 )
@@ -204,8 +205,9 @@ func main() {
 	}
 
 	if err := (&controller.VaultUnsealerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		SecretsLoader: secrets.NewLoader(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VaultUnsealer")
 		os.Exit(1)

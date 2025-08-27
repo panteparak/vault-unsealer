@@ -444,3 +444,96 @@ This Markdown is now fully complete and Claude Code-ready, including:
 	•	CI/Makefile notes
 	•	Helm values for Vault test deployment
 	•	ASCII flowcharts for operator and secrets flow
+
+
+# Vault Auto-Unseal Operator - E2E Tests (Updated)
+
+### End-to-End (E2E) Tests
+
+The E2E tests validate the operator in a real Kubernetes environment with Vault deployed.
+
+#### Test Strategy
+
+1. **Cluster Bootstrap**
+   - Use [Testcontainers-Go](https://github.com/testcontainers/testcontainers-go) to start a lightweight `k3s` cluster in Docker.
+   - Confirm `kubectl` connectivity within test runtime.
+
+   ```mermaid
+   flowchart TD
+     A[Test Start] --> B[Spin up k3s via Testcontainers]
+     B --> C[Verify kubectl connectivity]
+   ```
+
+2. **Vault Installation**
+   - Deploy HashiCorp Vault via Helm inside the k3s cluster.
+   - Use a predefined Helm `values.yaml` file to configure:
+     - HA mode (if enabled).
+     - Initial root token and seal configuration disabled (to simulate sealed pods).
+     - Labels that match CRD spec (`vault.auto-unseal=true`).
+
+   ```bash
+   helm repo add hashicorp https://helm.releases.hashicorp.com
+   helm install vault hashicorp/vault -f test/values-vault.yaml --namespace vault --create-namespace
+   ```
+
+   ```mermaid
+   flowchart TD
+     C --> D[Helm install Vault into k3s]
+     D --> E[Vault pods start in Sealed state]
+   ```
+
+3. **Operator Deployment**
+   - Build and deploy the operator into the same k3s cluster using the CRD, RBAC, and Deployment manifests.
+   - Apply the CRD with secrets pointing to the unseal keys.
+
+   ```bash
+   kubectl apply -f config/crd/bases/vault.auto-unseal.yaml
+   kubectl apply -f config/rbac/
+   kubectl apply -f config/deploy/
+   ```
+
+   ```mermaid
+   flowchart TD
+     E --> F[Deploy Operator with CRDs + RBAC]
+     F --> G[Operator starts watching Vault pods]
+   ```
+
+4. **Test Case: Auto-Unseal**
+   - Wait until Vault pods are running in `Sealed` state (using `kubectl get pod -l app.kubernetes.io/name=vault`).
+   - Verify the operator detects sealed pods and calls `/v1/sys/unseal` with the provided unseal keys.
+   - Assert all Vault pods transition to `Unsealed`.
+
+   Example check:
+   ```go
+   eventually(func() bool {
+       out, _ := exec.Command("kubectl", "exec", "vault-0", "--", "vault", "status", "-format=json").Output()
+       status := parseVaultStatus(out)
+       return !status.Sealed
+   }, 2*time.Minute, 10*time.Second).Should(BeTrue())
+   ```
+
+   ```mermaid
+   flowchart TD
+     G --> H[Operator detects sealed Vault pods]
+     H --> I[Operator retrieves unseal keys from K8s Secrets]
+     I --> J[Operator calls Vault /v1/sys/unseal API]
+     J --> K[Vault pods become Unsealed]
+     K --> L[Test Assertion: Sealed=false]
+   ```
+
+5. **Cleanup**
+   - Uninstall Helm release for Vault.
+   - Tear down the k3s test container after tests.
+
+   ```mermaid
+   flowchart TD
+     L --> M[Helm uninstall Vault]
+     M --> N[Stop k3s Testcontainer]
+     N --> O[Test End]
+   ```
+
+#### Notes
+
+- Tests should use **Ginkgo/Gomega** for BDD-style assertions.  
+- Use retry logic since Vault pods may take 1–2 minutes to become ready.  
+- The E2E test suite runs as part of GitHub Actions CI with Testcontainers’ k3s module.  

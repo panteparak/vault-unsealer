@@ -1,0 +1,6 @@
+# Dockerfile for E2E testing - uses distroless for security
+FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /
+COPY bin/manager /manager
+USER 65532:65532
+ENTRYPOINT ["/manager"]
