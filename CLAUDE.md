@@ -8,7 +8,7 @@ This is a **Vault Auto-unseal Operator** - a Kubernetes operator that automatica
 
 **Key Architecture:**
 - **Event-driven**: Watches Pods, VaultUnsealer CRs, and referenced Secrets
-- **Multi-secret support**: Can load unseal keys from multiple Kubernetes Secrets  
+- **Multi-secret support**: Can load unseal keys from multiple Kubernetes Secrets
 - **Threshold-based**: Submits only the required number of keys per pod
 - **HA-aware**: Handles both single-node and HA Vault deployments
 - **Production-ready**: Includes metrics, structured logging, and distroless container support
@@ -90,7 +90,7 @@ kubectl apply -f config/samples/
 - Implements finalizer handling for graceful cleanup
 - Updates status conditions and manages requeue logic
 
-**`internal/vault/`** - Vault API client wrapper  
+**`internal/vault/`** - Vault API client wrapper
 - `client.go`: HTTP client for Vault seal/unseal operations with TLS support
 - Handles `/v1/sys/seal-status` and `/v1/sys/unseal` endpoints
 - Includes retry logic and proper error handling
@@ -151,7 +151,7 @@ kubectl apply -f config/samples/
 
 ### Production Deployment
 - Distroless container images for minimal security surface
-- Multi-architecture builds (AMD64/ARM64) 
+- Multi-architecture builds (AMD64/ARM64)
 - Helm chart available in `helm/vault-unsealer/`
 - RBAC manifests in `config/rbac/`
 - Production deployment manifests in `deploy/production/`

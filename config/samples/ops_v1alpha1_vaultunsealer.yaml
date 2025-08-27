@@ -15,7 +15,7 @@ spec:
     # caBundleSecretRef:
     #   name: vault-ca-cert
     #   key: ca.crt
-  
+
   # References to secrets containing unseal keys
   unsealKeysSecretRefs:
     - name: vault-unseal-keys
@@ -24,16 +24,16 @@ spec:
     # - name: vault-unseal-keys-backup
     #   key: keys.txt
     #   namespace: vault-backup-system
-  
+
   # Label selector to identify Vault pods
   vaultLabelSelector: "app.kubernetes.io/name=vault"
-  
+
   # Unsealing mode configuration
   mode:
     ha: true  # Set to false for single-node Vault deployments
-  
+
   # Optional: Limit number of keys to use (useful for key rotation)
   keyThreshold: 3
-  
+
   # Optional: Custom reconciliation interval (default: 60s)
   # interval: "30s"

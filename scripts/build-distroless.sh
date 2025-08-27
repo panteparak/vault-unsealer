@@ -44,16 +44,16 @@ warn() {
 # Validate prerequisites
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     if ! command -v docker &> /dev/null; then
         error "Docker is not installed or not in PATH"
     fi
-    
+
     # Check if buildx is available
     if ! docker buildx version &> /dev/null; then
         error "Docker buildx is required for multi-platform builds"
     fi
-    
+
     # Create buildx instance if it doesn't exist
     if ! docker buildx inspect multiarch &> /dev/null; then
         log "Creating buildx instance for multi-platform builds..."
@@ -61,7 +61,7 @@ check_prerequisites() {
     else
         docker buildx use multiarch
     fi
-    
+
     success "Prerequisites checked"
 }
 
@@ -73,7 +73,7 @@ build_image() {
     log "Version: ${VERSION}"
     log "Git Commit: ${GIT_COMMIT}"
     log "Build Date: ${BUILD_DATE}"
-    
+
     # Build arguments
     BUILD_ARGS=(
         --file "${DOCKERFILE}"
@@ -84,7 +84,7 @@ build_image() {
         --tag "${IMAGE_NAME}:${TAG}"
         --tag "${IMAGE_NAME}:latest"
     )
-    
+
     # Add push flag if requested
     if [[ "${PUSH}" == "true" ]]; then
         BUILD_ARGS+=(--push)
@@ -93,10 +93,10 @@ build_image() {
         BUILD_ARGS+=(--load)
         warn "Image will be built locally only (use 'push' as second argument to push)"
     fi
-    
+
     # Execute build
     docker buildx build "${BUILD_ARGS[@]}" .
-    
+
     success "Image built successfully"
 }
 
@@ -105,7 +105,7 @@ show_info() {
     if [[ "${PUSH}" != "true" ]]; then
         log "Image information:"
         docker images "${IMAGE_NAME}:${TAG}" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
-        
+
         log "Testing image..."
         if docker run --rm "${IMAGE_NAME}:${TAG}" --help &> /dev/null; then
             success "Image runs successfully"
@@ -123,12 +123,12 @@ cleanup() {
 # Main execution
 main() {
     log "Starting distroless build for ${IMAGE_NAME}"
-    
+
     check_prerequisites
     build_image
     show_info
     cleanup
-    
+
     success "Build process completed!"
 }
 

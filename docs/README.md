@@ -76,7 +76,7 @@ The operator continuously monitors Vault pods and automatically unseals them whe
 ### 1. Prerequisites
 
 - Kubernetes cluster (v1.25+)
-- HashiCorp Vault installed and **initialized** 
+- HashiCorp Vault installed and **initialized**
 - Unseal keys stored in Kubernetes Secrets
 - RBAC enabled cluster
 
@@ -294,7 +294,7 @@ groups:
       severity: critical
     annotations:
       summary: "Vault unsealer operator is down"
-      
+
   - alert: VaultUnsealFailures
     expr: increase(vault_unsealer_reconciliation_errors_total[5m]) > 0
     for: 2m

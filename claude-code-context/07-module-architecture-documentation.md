@@ -144,11 +144,11 @@ func (r *VaultUnsealerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 func (r *VaultUnsealerReconciler) handleFinalizer(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer) error
 
 // Main unsealing logic
-func (r *VaultUnsealerReconciler) unsealPods(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer, 
+func (r *VaultUnsealerReconciler) unsealPods(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer,
     pods []corev1.Pod, unsealKeys []string, reconciledID string) ([]string, []string, error)
 
 // Updates resource status with current state
-func (r *VaultUnsealerReconciler) updateStatus(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer, 
+func (r *VaultUnsealerReconciler) updateStatus(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer,
     podsChecked, unsealedPods []string, err error, reconciledID string) error
 ```
 
@@ -189,11 +189,11 @@ func (r *VaultUnsealerReconciler) updateStatus(ctx context.Context, vaultUnseale
 
 ```go
 // Main entry point for loading keys
-func (l *Loader) LoadUnsealKeys(ctx context.Context, namespace string, 
+func (l *Loader) LoadUnsealKeys(ctx context.Context, namespace string,
     secretRefs []opsv1alpha1.SecretRef, keyThreshold int) ([]string, error)
 
 // Load keys from individual secret
-func (l *Loader) loadKeysFromSecret(ctx context.Context, namespace string, 
+func (l *Loader) loadKeysFromSecret(ctx context.Context, namespace string,
     secretRef opsv1alpha1.SecretRef) ([]string, error)
 
 // Parse different key formats
@@ -227,7 +227,7 @@ func (l *Loader) parseKeys(data []byte) ([]string, error)
 
 **Test Coverage**:
 - JSON and text format parsing
-- Key deduplication across multiple secrets  
+- Key deduplication across multiple secrets
 - Threshold enforcement
 - Cross-namespace access
 - Error handling for missing/invalid secrets
@@ -290,7 +290,7 @@ type SealStatus struct {
 
 **Error Handling**:
 - Network connectivity issues
-- Authentication failures  
+- Authentication failures
 - Invalid unseal keys
 - Vault API errors
 
@@ -325,7 +325,7 @@ ReconciliationTotal = prometheus.NewCounterVec(
 // 2. Error tracking
 ReconciliationErrors = prometheus.NewCounterVec(
     prometheus.CounterOpts{
-        Name: "vault_unsealer_reconciliation_errors_total", 
+        Name: "vault_unsealer_reconciliation_errors_total",
         Help: "Total number of reconciliation errors",
     },
     []string{"vaultunsealer", "namespace", "error_type"},
@@ -352,7 +352,7 @@ PodsUnsealed = prometheus.NewGaugeVec(
 // 5. Pod processing tracking
 PodsChecked = prometheus.NewGaugeVec(
     prometheus.GaugeOpts{
-        Name: "vault_unsealer_pods_checked", 
+        Name: "vault_unsealer_pods_checked",
         Help: "Number of pods checked in last reconciliation",
     },
     []string{"vaultunsealer", "namespace"},
@@ -395,7 +395,7 @@ VaultConnectionStatus = prometheus.NewGaugeVec(
 **Usage Pattern**:
 ```go
 metrics.ReconciliationTotal.WithLabelValues(
-    vaultUnsealer.Name, 
+    vaultUnsealer.Name,
     vaultUnsealer.Namespace,
 ).Inc()
 ```
@@ -439,7 +439,7 @@ func WithPod(logger logr.Logger, pod *corev1.Pod) logr.Logger {
     )
 }
 
-// Add Secret reference context  
+// Add Secret reference context
 func WithSecret(logger logr.Logger, secretRef opsv1alpha1.SecretRef, namespace string) logr.Logger
 
 // Add Vault connection context
@@ -454,7 +454,7 @@ func WithDuration(logger logr.Logger, operation string, duration time.Duration) 
 
 **Log Levels**:
 - **Debug**: Detailed operational flow
-- **Info**: Normal operational events  
+- **Info**: Normal operational events
 - **Warn**: Non-fatal issues that may require attention
 - **Error**: Fatal errors requiring immediate action
 
@@ -481,7 +481,7 @@ logger.Info("Starting reconciliation")
 
 ##### `basic_e2e_test.go`
 - **Testcontainers Integration**: Uses k3s container for testing
-- **Kubeconfig Management**: Handles Docker exec output parsing  
+- **Kubeconfig Management**: Handles Docker exec output parsing
 - **CRD Installation**: Dynamic CRD installation in test clusters
 - **Comprehensive Validation**: Tests all major functionality
 
@@ -522,7 +522,7 @@ logger.Info("Starting reconciliation")
 - Subresource definitions (status)
 
 #### 9.2 RBAC Configuration (`config/rbac/`)
-- Service accounts and role bindings  
+- Service accounts and role bindings
 - Minimal privilege access controls
 - Leader election permissions
 
@@ -546,7 +546,7 @@ logger.Info("Starting reconciliation")
 
 **Components**:
 - `namespace.yaml`: Dedicated namespace
-- `rbac.yaml`: Complete RBAC configuration  
+- `rbac.yaml`: Complete RBAC configuration
 - `deployment.yaml`: Secure operator deployment
 - `service.yaml`: Metrics service exposure
 - `servicemonitor.yaml`: Prometheus integration
@@ -583,7 +583,7 @@ logger.Info("Starting reconciliation")
 User Creates VaultUnsealer → Controller Reconcile → Secrets Loader → Vault Client → Status Update
                                     ↓                    ↓              ↓             ↓
                             Pod Discovery    →  Key Loading  → Unseal Ops → Metrics Update
-                                    ↓                    ↓              ↓             ↓  
+                                    ↓                    ↓              ↓             ↓
                             Label Selection  → Deduplication → TLS Verify →  Log Events
 ```
 
@@ -594,7 +594,7 @@ Vault API Error → Vault Client → Controller → Status Condition → User Vi
                                      ↓              ↓                ↓
 Secret Missing → Secrets Loader → Controller → Metrics Update → Alert Manager
                                      ↓              ↓                ↓
-Pod Not Found → Controller → Status Update → Log Warning → Admin Notification  
+Pod Not Found → Controller → Status Update → Log Warning → Admin Notification
 ```
 
 ### 3. Observability Flow
@@ -602,7 +602,7 @@ Pod Not Found → Controller → Status Update → Log Warning → Admin Notific
 ```
 Operation → Structured Logs → Log Aggregation
     ↓           ↓
-Metrics → Prometheus → Grafana Dashboard  
+Metrics → Prometheus → Grafana Dashboard
     ↓           ↓
 Events → Kubernetes → kubectl/UI
 ```
@@ -619,7 +619,7 @@ Each module has a single, well-defined responsibility:
 
 ### 2. **Dependency Injection**
 - Dependencies injected through constructors
-- Interfaces used for testability  
+- Interfaces used for testability
 - Clean module boundaries with minimal coupling
 
 ### 3. **Error Handling**

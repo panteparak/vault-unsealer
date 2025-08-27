@@ -42,7 +42,7 @@ spec:
     caBundleSecretRef:
       name: vault-ca-secret
       key: ca.crt
-  
+
   # References to secrets containing unseal keys
   unsealKeysSecretRefs:
     - name: vault-unseal-keys-a
@@ -53,7 +53,7 @@ spec:
 
   # Periodic sync interval for safety checks
   interval: 60s
-  
+
   # Label selector to find Vault pods
   vaultLabelSelector: "app.kubernetes.io/name=vault"
 
@@ -534,6 +534,6 @@ The E2E tests validate the operator in a real Kubernetes environment with Vault 
 
 #### Notes
 
-- Tests should use **Ginkgo/Gomega** for BDD-style assertions.  
-- Use retry logic since Vault pods may take 1–2 minutes to become ready.  
-- The E2E test suite runs as part of GitHub Actions CI with Testcontainers’ k3s module.  
+- Tests should use **Ginkgo/Gomega** for BDD-style assertions.
+- Use retry logic since Vault pods may take 1–2 minutes to become ready.
+- The E2E test suite runs as part of GitHub Actions CI with Testcontainers’ k3s module.

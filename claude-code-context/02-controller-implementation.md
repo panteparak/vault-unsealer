@@ -26,7 +26,7 @@ This document summarizes the implementation of the VaultUnsealer controller with
 - **Reconciliation Logic**: Complete event-driven reconciliation loop
 - **Pod Discovery**: Uses label selectors to find Vault pods
 - **Pod Status Checking**: Ensures pods are ready before attempting unseal
-- **Unsealing Workflow**: 
+- **Unsealing Workflow**:
   - Checks seal status first
   - Submits keys sequentially until unsealed
   - Supports threshold-based unsealing
@@ -52,7 +52,7 @@ Updated controller with proper RBAC annotations:
   resources: vaultunsealers, vaultunsealers/status, vaultunsealers/finalizers
   verbs: get, list, watch, create, update, patch, delete
 
-# Kubernetes core resource permissions  
+# Kubernetes core resource permissions
 - groups: ""
   resources: pods, secrets, events
   verbs: get, list, watch, create, patch

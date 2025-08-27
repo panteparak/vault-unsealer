@@ -25,7 +25,7 @@ func (v *VaultUnsealerValidator) validateVaultConnection(vault VaultConnectionSp
     if vault.URL == "" {
         return field.Required(fldPath.Child("url"), "Vault URL is required")
     }
-    
+
     // URL format and scheme validation
     parsedURL, err := url.Parse(vault.URL)
     if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
@@ -47,7 +47,7 @@ func (v *VaultUnsealerValidator) validateUnsealKeysSecretRefs(secretRefs []Secre
     if len(secretRefs) == 0 {
         return field.Required(fldPath, "at least one unseal keys secret reference is required")
     }
-    
+
     // Check for duplicates
     seen := make(map[string]int)
     for i, secretRef := range secretRefs {
@@ -72,7 +72,7 @@ func (v *VaultUnsealerValidator) validateVaultLabelSelector(labelSelector string
     if labelSelector == "" {
         return field.Required(fldPath, "vault label selector is required")
     }
-    
+
     if !isValidLabelSelector(labelSelector) {
         return field.Invalid(fldPath, labelSelector, "invalid label selector format")
     }
@@ -88,15 +88,15 @@ func (v *VaultUnsealerValidator) validateVaultLabelSelector(labelSelector string
 ```go
 func (v *VaultUnsealerValidator) validateKeyThreshold(keyThreshold int, secretRefsCount int) (field.ErrorList, admission.Warnings) {
     var warnings admission.Warnings
-    
+
     if keyThreshold < 0 {
         return field.Invalid(fldPath, keyThreshold, "keyThreshold must be non-negative")
     }
-    
+
     if keyThreshold == 0 {
         warnings = append(warnings, "keyThreshold is 0, all available keys will be used for unsealing")
     }
-    
+
     if keyThreshold > secretRefsCount*10 {
         warnings = append(warnings, fmt.Sprintf("keyThreshold (%d) is much higher than secret references (%d)", keyThreshold, secretRefsCount))
     }
@@ -105,14 +105,14 @@ func (v *VaultUnsealerValidator) validateKeyThreshold(keyThreshold int, secretRe
 
 **Validates:**
 - ✅ **Non-negative**: Key threshold cannot be negative
-- ⚠️ **Zero Warning**: Warns when threshold is 0 (unlimited keys)  
+- ⚠️ **Zero Warning**: Warns when threshold is 0 (unlimited keys)
 - ⚠️ **High Threshold Warning**: Warns when threshold seems unusually high
 
 #### 5. **Mode Configuration Validation**
 ```go
 func (v *VaultUnsealerValidator) validateMode(mode ModeSpec) (field.ErrorList, admission.Warnings) {
     var warnings admission.Warnings
-    
+
     if !mode.HA {
         warnings = append(warnings, "HA mode is disabled, unsealing will stop after the first successful pod")
     }
@@ -150,7 +150,7 @@ func TestVaultUnsealerValidator_ValidateCreate(t *testing.T) {
     }{
         // 12 comprehensive test cases covering:
         // - Valid configurations
-        // - Missing required fields  
+        // - Missing required fields
         // - Invalid formats
         // - Duplicate references
         // - Warning scenarios
@@ -263,7 +263,7 @@ spec:
 ```
 **Result**: ❌ Rejected with detailed errors:
 ```
-VaultUnsealer.ops.autounseal.vault.io "invalid-unsealer" is invalid: 
+VaultUnsealer.ops.autounseal.vault.io "invalid-unsealer" is invalid:
 [spec.vault.url: Required value: Vault URL is required,
  spec.unsealKeysSecretRefs: Required value: at least one unseal keys secret reference is required,
  spec.vaultLabelSelector: Required value: vault label selector is required,
@@ -326,7 +326,7 @@ Running Suite: Controller Suite
 ✅ Controller tests pass with webhook validation
 --- PASS: TestControllers (6.06s)
 
-=== RUN   TestK3sE2EBasic  
+=== RUN   TestK3sE2EBasic
 ✅ E2E tests pass with webhook integration
 --- PASS: TestK3sE2EBasic (25.53s)
 ```
@@ -411,7 +411,7 @@ The webhook validation completes the operator's defensive architecture:
 
 ### **Integration Points:**
 - **Admission Controller**: Webhook runs before resource storage
-- **Kubernetes API**: Full integration with native validation pipeline  
+- **Kubernetes API**: Full integration with native validation pipeline
 - **Controller Runtime**: Seamless integration with existing operator framework
 - **Error Reporting**: Standard Kubernetes error format and status codes
 
@@ -422,7 +422,7 @@ The webhook validation implementation successfully completes the final enhanceme
 ### **Complete Validation Coverage:**
 - ✅ All VaultUnsealer spec fields validated
 - ✅ Required fields enforcement
-- ✅ Format and constraint validation  
+- ✅ Format and constraint validation
 - ✅ Warning system for configuration concerns
 - ✅ Comprehensive test coverage (91.1%)
 

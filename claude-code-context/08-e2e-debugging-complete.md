@@ -93,7 +93,7 @@ fmt.Printf("🔍 [DEBUG] LoadUnsealKeys returned %d keys, err=%v\n", len(keys), 
 
 ### 3. Pod Processing Validation
 ```go
-fmt.Printf("🔍 [DEBUG] Processing pod: %s, Ready: %v, IP: %s\n", 
+fmt.Printf("🔍 [DEBUG] Processing pod: %s, Ready: %v, IP: %s\n",
     pod.Name, r.isPodReady(&pod), pod.Status.PodIP)
 ```
 
@@ -118,7 +118,7 @@ fmt.Printf("🔍 [DEBUG] Processing pod: %s, Ready: %v, IP: %s\n",
 
 ### ✅ Test Environment Validation
 - Real production Vault deployment via testcontainers
-- Proper K8s resource creation and management  
+- Proper K8s resource creation and management
 - Authentic controller reconciliation logic execution
 - Complete end-to-end workflow verification
 
@@ -146,7 +146,7 @@ fmt.Printf("🔍 [DEBUG] Processing pod: %s, Ready: %v, IP: %s\n",
 
 ## Current Status: ✅ COMPLETE SUCCESS
 The E2E test now fully validates the complete Vault Auto-unseal Operator functionality:
-- All reconciliation logic working correctly  
+- All reconciliation logic working correctly
 - Pod discovery and unsealing functional
 - Status management and resource handling verified
 - Production-ready controller implementation confirmed

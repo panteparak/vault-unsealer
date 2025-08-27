@@ -51,7 +51,7 @@ func TestCompleteE2E(t *testing.T) {
 	t.Log("  • Actual unsealing with proper error handling")
 	t.Log("  • Status updates and conditions")
 	t.Log("  • Full debugging and logging")
-	
+
 	startTime := time.Now()
 	t.Logf("🕐 Complete E2E test started at: %v", startTime.Format(time.RFC3339))
 
@@ -263,10 +263,10 @@ func TestCompleteE2E(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("❌ Failed to list pods: %v", err)
 	}
-	
+
 	t.Logf("📋 Found %d pods in vault-system namespace:", len(podList.Items))
 	for _, pod := range podList.Items {
-		t.Logf("  • Pod: %s, Labels: %v, Phase: %s, IP: %s", 
+		t.Logf("  • Pod: %s, Labels: %v, Phase: %s, IP: %s",
 			pod.Name, pod.Labels, pod.Status.Phase, pod.Status.PodIP)
 	}
 
@@ -278,30 +278,30 @@ func TestCompleteE2E(t *testing.T) {
 	}
 
 	t.Log("🎯 Starting reconciliation execution...")
-	
+
 	// Add context with logger for the reconciler
 	reconcileCtx := log.IntoContext(ctx, logger)
-	
+
 	// The first reconciliation might just add finalizers, so we need to run it multiple times
 	// to ensure the actual unsealing logic runs
 	maxAttempts := 5
 	var finalResult reconcile.Result
 	var finalErr error
-	
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		t.Logf("🔄 Reconciliation attempt %d/%d", attempt, maxAttempts)
-		
+
 		result, err := reconciler.Reconcile(reconcileCtx, req)
 		finalResult = result
 		finalErr = err
-		
+
 		t.Logf("📋 Attempt %d result: %+v, err: %v", attempt, result, err)
-		
+
 		if err != nil {
 			t.Logf("⚠️ Reconciliation attempt %d returned error: %v", attempt, err)
 			// Continue trying even if there's an error
 		}
-		
+
 		// If no requeue is requested and no error, we might be done
 		// But always run at least 2 attempts (one for finalizer, one for actual work)
 		if err == nil && result.Requeue == false && result.RequeueAfter == 0 && attempt >= 2 {
@@ -309,11 +309,11 @@ func TestCompleteE2E(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if finalErr != nil {
 		t.Logf("⚠️ Final reconciliation error: %v", finalErr)
 		t.Logf("📋 Final reconciliation result: %+v", finalResult)
-		
+
 		// Let's check what happened to the resource
 		var updatedUnsealer opsv1alpha1.VaultUnsealer
 		if getErr := k8sClient.Get(ctx, req.NamespacedName, &updatedUnsealer); getErr != nil {
@@ -351,14 +351,14 @@ func TestCompleteE2E(t *testing.T) {
 			time.Sleep(3 * time.Second)
 			continue
 		}
-		
+
 		finalSealStatus = sealed
 		if !sealed {
 			unsealed = true
 			t.Logf("🎉 SUCCESS! Vault unsealed after %d attempts!", attempt)
 			break
 		}
-		
+
 		t.Logf("⏳ Vault still sealed, attempt %d/10...", attempt)
 		time.Sleep(3 * time.Second)
 	}
@@ -386,18 +386,18 @@ func TestCompleteE2E(t *testing.T) {
 		t.Logf("  • Pods Checked: %v (count: %d)", finalUnsealer.Status.PodsChecked, len(finalUnsealer.Status.PodsChecked))
 		t.Logf("  • Unsealed Pods: %v (count: %d)", finalUnsealer.Status.UnsealedPods, len(finalUnsealer.Status.UnsealedPods))
 		t.Logf("  • Conditions: %d", len(finalUnsealer.Status.Conditions))
-		
+
 		for i, condition := range finalUnsealer.Status.Conditions {
 			t.Logf("    %d. Type: %s", i+1, condition.Type)
 			t.Logf("       Status: %s", condition.Status)
 			t.Logf("       Reason: %s", condition.Reason)
 			t.Logf("       Message: %s", condition.Message)
 		}
-		
+
 		if finalUnsealer.Status.LastReconcileTime != nil {
 			t.Logf("  • Last Reconcile Time: %v", finalUnsealer.Status.LastReconcileTime.Time)
 		}
-		
+
 		// Check finalizers
 		if len(finalUnsealer.Finalizers) > 0 {
 			t.Logf("  • Finalizers: %v", finalUnsealer.Finalizers)
@@ -428,7 +428,7 @@ func TestCompleteE2E(t *testing.T) {
 	// Final assessment
 	t.Log("")
 	t.Log("🏁 === COMPLETE E2E TEST ASSESSMENT ===")
-	
+
 	if unsealed {
 		t.Log("🎉 SUCCESS: Complete E2E workflow validated!")
 		t.Log("✅ Vault was automatically unsealed by the controller")
@@ -440,7 +440,7 @@ func TestCompleteE2E(t *testing.T) {
 		t.Log("✅ Status updates are happening")
 		t.Log("🔧 Unsealing logic may need refinement")
 	}
-	
+
 	t.Log("✅ Test provided detailed debugging information")
 	t.Log("✅ All components are integrated and communicating")
 	t.Log("")
@@ -450,14 +450,14 @@ func TestCompleteE2E(t *testing.T) {
 
 func deployVaultWithLogging(ctx context.Context, dockerNetwork *testcontainers.DockerNetwork, t *testing.T) (testcontainers.Container, string, []string, string, error) {
 	t.Log("🔧 Starting Vault container...")
-	
+
 	vaultContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "hashicorp/vault:1.15.2",
 			ExposedPorts: []string{"8200/tcp"},
 			Env: map[string]string{
-				"VAULT_ADDR":              "http://0.0.0.0:8200",
-				"VAULT_API_ADDR":          "http://0.0.0.0:8200",
+				"VAULT_ADDR":     "http://0.0.0.0:8200",
+				"VAULT_API_ADDR": "http://0.0.0.0:8200",
 				"VAULT_LOCAL_CONFIG": `{
 					"backend": {"file": {"path": "/vault/data"}},
 					"listener": {"tcp": {"address": "0.0.0.0:8200", "tls_disable": true}},
@@ -488,7 +488,7 @@ func deployVaultWithLogging(ctx context.Context, dockerNetwork *testcontainers.D
 	if err != nil {
 		return nil, "", nil, "", fmt.Errorf("failed to get Vault port: %w", err)
 	}
-	
+
 	vaultURL := fmt.Sprintf("http://127.0.0.1:%s", vaultPort.Port())
 	t.Logf("🔗 Vault accessible at: %s", vaultURL)
 
@@ -500,7 +500,7 @@ func deployVaultWithLogging(ctx context.Context, dockerNetwork *testcontainers.D
 	}
 
 	t.Logf("🔑 Vault initialized with %d keys", len(vaultKeys))
-	
+
 	// Seal Vault for testing
 	t.Log("🔒 Sealing Vault for testing...")
 	if err := sealVaultWithTokenAndLogging(vaultURL, rootToken, t); err != nil {
@@ -521,7 +521,7 @@ func initializeVaultWithLogging(vaultURL string, t *testing.T) ([]string, string
 
 	initBody, _ := json.Marshal(initData)
 	t.Logf("🔧 Sending init request to %s", vaultURL+"/v1/sys/init")
-	
+
 	resp, err := client.Post(vaultURL+"/v1/sys/init", "application/json", strings.NewReader(string(initBody)))
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to initialize Vault: %w", err)
@@ -548,7 +548,7 @@ func initializeVaultWithLogging(vaultURL string, t *testing.T) ([]string, string
 
 func checkVaultSealStatusDetailed(vaultURL string, t *testing.T) (bool, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	
+
 	resp, err := client.Get(vaultURL + "/v1/sys/seal-status")
 	if err != nil {
 		return false, fmt.Errorf("failed to get seal status: %w", err)
@@ -566,7 +566,7 @@ func checkVaultSealStatusDetailed(vaultURL string, t *testing.T) (bool, error) {
 		return false, fmt.Errorf("failed to decode seal status: %w", err)
 	}
 
-	t.Logf("🔍 Vault status: sealed=%v, progress=%d/%d, initialized=%v", 
+	t.Logf("🔍 Vault status: sealed=%v, progress=%d/%d, initialized=%v",
 		status.Sealed, status.Progress, status.T, status.Initialized)
 
 	return status.Sealed, nil
@@ -605,9 +605,9 @@ func manualUnsealTest(vaultURL string, keys []string, t *testing.T) (bool, error
 	for i, key := range keys {
 		unsealData := map[string]interface{}{"key": key}
 		unsealBody, _ := json.Marshal(unsealData)
-		
+
 		t.Logf("🔑 Using unseal key %d/%d", i+1, len(keys))
-		
+
 		resp, err := client.Post(vaultURL+"/v1/sys/unseal", "application/json", strings.NewReader(string(unsealBody)))
 		if err != nil {
 			return false, fmt.Errorf("failed to unseal with key %d: %w", i+1, err)
@@ -629,7 +629,7 @@ func manualUnsealTest(vaultURL string, keys []string, t *testing.T) (bool, error
 		}
 
 		t.Logf("📊 Progress: %d/%d, sealed: %v", unsealResp.Progress, unsealResp.T, unsealResp.Sealed)
-		
+
 		if !unsealResp.Sealed {
 			t.Logf("✅ Vault unsealed manually with %d keys!", i+1)
 			return true, nil

@@ -37,7 +37,7 @@ ARG GIT_COMMIT=unknown
 ARG BUILD_DATE
 ARG LDFLAGS
 
-# Build with security hardening flags  
+# Build with security hardening flags
 RUN CGO_ENABLED=0 \
     GOOS=${TARGETOS:-linux} \
     GOARCH=${TARGETARCH} \

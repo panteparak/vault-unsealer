@@ -80,43 +80,31 @@ const (
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 func (r *VaultUnsealerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	fmt.Printf("🔍 [DEBUG] Reconcile called for %s/%s\n", req.Namespace, req.Name)
-	
 	log := logf.FromContext(ctx)
 
 	var vaultUnsealer opsv1alpha1.VaultUnsealer
-	fmt.Printf("🔍 [DEBUG] About to get VaultUnsealer resource\n")
 	if err := r.Get(ctx, req.NamespacedName, &vaultUnsealer); err != nil {
-		fmt.Printf("🔍 [DEBUG] Error getting VaultUnsealer: %v\n", err)
 		if apierrors.IsNotFound(err) {
 			log.Info("VaultUnsealer resource not found. Ignoring since object must be deleted")
-			fmt.Printf("🔍 [DEBUG] VaultUnsealer not found, returning\n")
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Failed to get VaultUnsealer")
 		return ctrl.Result{}, err
 	}
-	
-	fmt.Printf("🔍 [DEBUG] Successfully got VaultUnsealer: %s/%s\n", vaultUnsealer.Namespace, vaultUnsealer.Name)
 
 	if r.SecretsLoader == nil {
 		r.SecretsLoader = secrets.NewLoader(r.Client)
 	}
 
 	// Handle deletion
-	fmt.Printf("🔍 [DEBUG] Checking deletion timestamp, DeletionTimestamp.IsZero(): %v\n", vaultUnsealer.ObjectMeta.DeletionTimestamp.IsZero())
 	if vaultUnsealer.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, ensure finalizer is present
-		fmt.Printf("🔍 [DEBUG] Object not being deleted, checking finalizer\n")
 		if !controllerutil.ContainsFinalizer(&vaultUnsealer, VaultUnsealerFinalizer) {
-			fmt.Printf("🔍 [DEBUG] Adding finalizer and updating\n")
 			controllerutil.AddFinalizer(&vaultUnsealer, VaultUnsealerFinalizer)
 			return ctrl.Result{}, r.Update(ctx, &vaultUnsealer)
 		}
-		fmt.Printf("🔍 [DEBUG] Finalizer already present, proceeding to reconcileVaultUnsealer\n")
 	} else {
 		// The object is being deleted
-		fmt.Printf("🔍 [DEBUG] Object is being deleted\n")
 		if controllerutil.ContainsFinalizer(&vaultUnsealer, VaultUnsealerFinalizer) {
 			// Perform cleanup
 			log.Info("Performing cleanup for VaultUnsealer")
@@ -132,17 +120,12 @@ func (r *VaultUnsealerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	fmt.Printf("🔍 [DEBUG] About to call reconcileVaultUnsealer\n")
 	return r.reconcileVaultUnsealer(ctx, &vaultUnsealer)
 }
 
 func (r *VaultUnsealerReconciler) reconcileVaultUnsealer(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer) (ctrl.Result, error) {
 	// Generate unique reconciliation ID for tracking
 	reconcileID, _ := generateReconcileID()
-
-	// DEBUG: Force output to trace reconciliation flow
-	fmt.Printf("🔍 [DEBUG] reconcileVaultUnsealer called for %s/%s\n", 
-		vaultUnsealer.Namespace, vaultUnsealer.Name)
 
 	// Create structured logger with VaultUnsealer context
 	log := logging.WithVaultUnsealer(logf.FromContext(ctx), vaultUnsealer)
@@ -168,11 +151,8 @@ func (r *VaultUnsealerReconciler) reconcileVaultUnsealer(ctx context.Context, va
 	vaultUnsealer.Status.PodsChecked = []string{}
 	vaultUnsealer.Status.UnsealedPods = []string{}
 
-	fmt.Printf("🔍 [DEBUG] About to call getVaultPods\n")
 	pods, err := r.getVaultPods(ctx, vaultUnsealer)
-	fmt.Printf("🔍 [DEBUG] getVaultPods returned %d pods, err=%v\n", len(pods), err)
 	if err != nil {
-		fmt.Printf("🔍 [DEBUG] Error getting vault pods: %v\n", err)
 		log.Error(err, "Failed to get Vault pods")
 		metrics.ReconciliationErrors.WithLabelValues(vaultUnsealer.Name, vaultUnsealer.Namespace, "pod_discovery").Inc()
 		r.setCondition(vaultUnsealer, ConditionTypePodUnavailable, ConditionStatusTrue, ReasonPodNotReady, err.Error())
@@ -187,11 +167,8 @@ func (r *VaultUnsealerReconciler) reconcileVaultUnsealer(ctx context.Context, va
 		return ctrl.Result{RequeueAfter: defaultInterval}, nil
 	}
 
-	fmt.Printf("🔍 [DEBUG] About to load unseal keys\n")
 	unsealKeys, err := r.SecretsLoader.LoadUnsealKeys(ctx, vaultUnsealer.Namespace, vaultUnsealer.Spec.UnsealKeysSecretRefs, vaultUnsealer.Spec.KeyThreshold)
-	fmt.Printf("🔍 [DEBUG] LoadUnsealKeys returned %d keys, err=%v\n", len(unsealKeys), err)
 	if err != nil {
-		fmt.Printf("🔍 [DEBUG] Error loading unseal keys: %v\n", err)
 		log.Error(err, "Failed to load unseal keys")
 		metrics.ReconciliationErrors.WithLabelValues(vaultUnsealer.Name, vaultUnsealer.Namespace, "keys_loading").Inc()
 		r.setCondition(vaultUnsealer, ConditionTypeKeysMissing, ConditionStatusTrue, ReasonKeysMissing, err.Error())
@@ -202,19 +179,14 @@ func (r *VaultUnsealerReconciler) reconcileVaultUnsealer(ctx context.Context, va
 	log.Info("Loaded unseal keys", "keyCount", len(unsealKeys))
 	metrics.UnsealKeysLoaded.WithLabelValues(vaultUnsealer.Name, vaultUnsealer.Namespace).Set(float64(len(unsealKeys)))
 
-	fmt.Printf("🔍 [DEBUG] Processing %d pods for unsealing\n", len(pods))
 	unsealedCount := 0
 	for _, pod := range pods {
-		fmt.Printf("🔍 [DEBUG] Processing pod: %s, Ready: %v, IP: %s\n", pod.Name, r.isPodReady(&pod), pod.Status.PodIP)
 		vaultUnsealer.Status.PodsChecked = append(vaultUnsealer.Status.PodsChecked, pod.Name)
 
 		if !r.isPodReady(&pod) {
 			log.Info("Pod is not ready, skipping", "pod", pod.Name)
-			fmt.Printf("🔍 [DEBUG] Pod %s is not ready, skipping\n", pod.Name)
 			continue
 		}
-		
-		fmt.Printf("🔍 [DEBUG] Pod %s is ready, attempting to check/unseal\n", pod.Name)
 
 		sealed, err := r.checkAndUnsealPod(ctx, &pod, vaultUnsealer, unsealKeys)
 		if err != nil {
@@ -263,49 +235,18 @@ func (r *VaultUnsealerReconciler) reconcileVaultUnsealer(ctx context.Context, va
 }
 
 func (r *VaultUnsealerReconciler) getVaultPods(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer) ([]corev1.Pod, error) {
-	log := logf.FromContext(ctx)
-	
-	// DEBUG: Force output to see if this method is called
-	fmt.Printf("🔍 [DEBUG] getVaultPods called: namespace=%s, labelSelector=%s\n", 
-		vaultUnsealer.Namespace, vaultUnsealer.Spec.VaultLabelSelector)
-	
-	log.Info("Getting Vault pods", 
-		"namespace", vaultUnsealer.Namespace, 
-		"labelSelector", vaultUnsealer.Spec.VaultLabelSelector)
-	
 	selector, err := labels.Parse(vaultUnsealer.Spec.VaultLabelSelector)
 	if err != nil {
-		log.Error(err, "Failed to parse label selector", "labelSelector", vaultUnsealer.Spec.VaultLabelSelector)
 		return nil, fmt.Errorf("invalid label selector: %w", err)
 	}
 
-	log.Info("Parsed label selector", "selector", selector.String())
-
-	// First, let's try listing all pods in the namespace to see what we have
-	allPodsList := &corev1.PodList{}
-	if err := r.List(ctx, allPodsList, &client.ListOptions{
-		Namespace: vaultUnsealer.Namespace,
-	}); err != nil {
-		log.Error(err, "Failed to list all pods")
-		return nil, err
-	}
-	
-	log.Info("Found pods in namespace", "namespace", vaultUnsealer.Namespace, "count", len(allPodsList.Items))
-	for _, pod := range allPodsList.Items {
-		log.Info("Pod details", "name", pod.Name, "labels", pod.Labels, "phase", pod.Status.Phase)
-	}
-
-	// Now list with the selector
 	podList := &corev1.PodList{}
 	if err := r.List(ctx, podList, &client.ListOptions{
 		Namespace:     vaultUnsealer.Namespace,
 		LabelSelector: selector,
 	}); err != nil {
-		log.Error(err, "Failed to list pods with selector")
 		return nil, err
 	}
-
-	log.Info("Found pods matching selector", "count", len(podList.Items), "labelSelector", vaultUnsealer.Spec.VaultLabelSelector)
 
 	return podList.Items, nil
 }
@@ -454,16 +395,7 @@ func (r *VaultUnsealerReconciler) clearCondition(vaultUnsealer *opsv1alpha1.Vaul
 }
 
 func (r *VaultUnsealerReconciler) updateStatus(ctx context.Context, vaultUnsealer *opsv1alpha1.VaultUnsealer) error {
-	fmt.Printf("🔍 [DEBUG] updateStatus called for %s/%s\n", vaultUnsealer.Namespace, vaultUnsealer.Name)
-	fmt.Printf("🔍 [DEBUG] Status: PodsChecked=%v, UnsealedPods=%v\n", vaultUnsealer.Status.PodsChecked, vaultUnsealer.Status.UnsealedPods)
-	
-	err := r.Status().Update(ctx, vaultUnsealer)
-	if err != nil {
-		fmt.Printf("🔍 [DEBUG] updateStatus ERROR: %v\n", err)
-	} else {
-		fmt.Printf("🔍 [DEBUG] updateStatus SUCCESS\n")
-	}
-	return err
+	return r.Status().Update(ctx, vaultUnsealer)
 }
 
 // generateReconcileID creates a unique identifier for tracking reconciliation operations

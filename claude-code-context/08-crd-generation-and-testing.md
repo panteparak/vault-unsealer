@@ -55,7 +55,7 @@ spec:
                 properties:
                   url:
                     type: string
-                  caBundleSecretRef: 
+                  caBundleSecretRef:
                     # ... SecretRef structure
                   insecureSkipVerify:
                     type: boolean
@@ -79,7 +79,7 @@ spec:
                 type: string
             required:
             - mode
-            - unsealKeysSecretRefs  
+            - unsealKeysSecretRefs
             - vault
             - vaultLabelSelector
           status:
@@ -107,19 +107,19 @@ spec:
   vault:
     url: "https://vault.vault.svc.cluster.local:8200"
     insecureSkipVerify: false
-  
+
   # References to secrets containing unseal keys
   unsealKeysSecretRefs:
     - name: vault-unseal-keys
       key: keys.json
-  
+
   # Label selector to identify Vault pods
   vaultLabelSelector: "app.kubernetes.io/name=vault"
-  
+
   # Unsealing mode configuration
   mode:
     ha: true
-  
+
   # Optional configurations
   keyThreshold: 3
 ```
@@ -141,11 +141,11 @@ func TestCRDGeneration(t *testing.T) {
     // Create scheme and register types
     testScheme := runtime.NewScheme()
     opsv1alpha1.AddToScheme(testScheme)
-    
+
     // Validate GVK assignment
     vaultUnsealer := &opsv1alpha1.VaultUnsealer{}
     gvk := vaultUnsealer.GetObjectKind().GroupVersionKind()
-    
+
     // Verify correct group, version, kind
     assert.Equal(t, "ops.autounseal.vault.io", gvk.Group)
     assert.Equal(t, "v1alpha1", gvk.Version)
@@ -157,11 +157,11 @@ func TestSchemeRegistration(t *testing.T) {
     testScheme := runtime.NewScheme()
     clientgoscheme.AddToScheme(testScheme)
     opsv1alpha1.AddToScheme(testScheme)
-    
+
     // Test that scheme can create objects from GVK
     gvk := opsv1alpha1.GroupVersion.WithKind("VaultUnsealer")
     obj, err := testScheme.New(gvk)
-    
+
     // Validate correct type instantiation
     vaultUnsealer, ok := obj.(*opsv1alpha1.VaultUnsealer)
     assert.True(t, ok)
@@ -183,22 +183,22 @@ func TestSchemeRegistration(t *testing.T) {
 ```go
 func installCRDs(ctx context.Context, container testcontainers.Container) error {
     // Load actual generated CRD from operator-sdk
-    crdPath := filepath.Join("..", "..", "config", "crd", "bases", 
+    crdPath := filepath.Join("..", "..", "config", "crd", "bases",
         "ops.autounseal.vault.io_vaultunsealers.yaml")
-    
+
     crdBytes, err := os.ReadFile(crdPath)
     if err != nil {
         return fmt.Errorf("failed to read generated CRD: %w", err)
     }
-    
+
     // Apply to k3s cluster
     // ... container.Exec kubectl apply
-    
+
     // Wait for CRD establishment
     exitCode, _, err := container.Exec(ctx, []string{
         "kubectl", "wait", "--for=condition=established",
         "crd/vaultunsealers.ops.autounseal.vault.io", "--timeout=30s"})
-    
+
     return nil
 }
 
@@ -206,20 +206,20 @@ func validateCRDInstallation(ctx context.Context, container testcontainers.Conta
     // Verify CRD exists
     exitCode, reader, err := container.Exec(ctx, []string{
         "kubectl", "get", "crd", "vaultunsealers.ops.autounseal.vault.io"})
-    
+
     // Validate required fields present
     requiredFields := []string{
         "ops.autounseal.vault.io", "VaultUnsealer", "v1alpha1",
         "vault", "unsealKeysSecretRefs", "mode", "vaultLabelSelector",
     }
-    
+
     // Check each field exists in CRD description
     for _, field := range requiredFields {
         if !strings.Contains(describeOutput, field) {
             return fmt.Errorf("CRD missing required field: %s", field)
         }
     }
-    
+
     return nil
 }
 ```
@@ -269,7 +269,7 @@ CRD validation successful - all required fields present
 **Usage:**
 ```bash
 make manifests  # Generates CRDs from Go types
-make install   # Installs CRDs to cluster  
+make install   # Installs CRDs to cluster
 ```
 
 ### Programmatic Approach (Go Libraries)

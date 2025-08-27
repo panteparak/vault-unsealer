@@ -8,7 +8,7 @@ Successfully completed the implementation of E2E testing for the Vault Auto-unse
 
 ### 1. Kubeconfig Parsing Resolution
 **Problem**: Initial kubeconfig contained control characters causing "yaml: control characters are not allowed" error
-**Solution**: 
+**Solution**:
 - Implemented `cleanKubeconfig()` function using regex to extract valid YAML
 - Strips control characters and starts from "apiVersion:" marker
 - Now successfully parses k3s-generated kubeconfig
@@ -21,7 +21,7 @@ Successfully completed the implementation of E2E testing for the Vault Auto-unse
 - Dynamic port mapping for secure connections
 
 ### 3. CRD Installation in Test Environment
-**Solution**: 
+**Solution**:
 - Implemented `installCRDs()` function that writes CRD definition to container
 - Uses `kubectl apply` within k3s container to install VaultUnsealer CRD
 - Waits for CRD establishment before proceeding with tests
@@ -119,7 +119,7 @@ go test ./test/e2e/ -run TestK3sE2EBasic -v
 The E2E test framework provides confidence for production deployment by validating:
 
 ✅ **API Operations**: All Kubernetes API interactions work correctly
-✅ **CRD Functionality**: Custom resource definitions install and operate properly  
+✅ **CRD Functionality**: Custom resource definitions install and operate properly
 ✅ **Business Logic**: Core secrets processing logic functions as designed
 ✅ **Cross-namespace Support**: Multi-namespace secret access works
 ✅ **Error Handling**: Missing resources and edge cases handled gracefully

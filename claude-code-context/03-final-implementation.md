@@ -82,7 +82,7 @@ Complete RBAC configuration:
   resources: ["vaultunsealers", "vaultunsealers/status", "vaultunsealers/finalizers"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
-# Core Kubernetes resource permissions  
+# Core Kubernetes resource permissions
 - apiGroups: [""]
   resources: ["pods", "secrets", "events"]
   verbs: ["get", "list", "watch", "create", "patch"]

@@ -98,14 +98,14 @@ docker buildx build --platform "${PLATFORMS}" \
 $ docker run --rm alpine:latest ls /bin
 ash  busybox  cat  chgrp  chmod  chown  cp  date  dd  df  dmesg  dnsdomainname  ...
 
-# Distroless container  
+# Distroless container
 $ docker run --rm vault-autounseal-operator:distroless ls
 # Error: executable file not found (no shell!)
 ```
 
 **Attack Surface Reduction:**
 - ❌ No shell (`/bin/sh`, `/bin/bash`)
-- ❌ No package manager (`apk`, `apt`, `yum`)  
+- ❌ No package manager (`apk`, `apt`, `yum`)
 - ❌ No coreutils (`ls`, `cat`, `ps`)
 - ❌ No debug tools (`gdb`, `strace`)
 - ✅ Only application binary + minimal runtime
@@ -115,13 +115,13 @@ $ docker run --rm vault-autounseal-operator:distroless ls
 **Size Comparison:**
 ```bash
 # Standard Alpine-based image: ~45MB
-# Distroless image: ~25MB  
+# Distroless image: ~25MB
 # Reduction: 44% smaller
 ```
 
 **Security Scanning Results:**
 - ✅ **Zero CVEs**: No vulnerable packages in runtime image
-- ✅ **CIS Compliance**: Meets container security benchmarks  
+- ✅ **CIS Compliance**: Meets container security benchmarks
 - ✅ **Supply Chain**: Signed Google distroless base images
 - ✅ **Immutable**: Read-only filesystem, no modification capabilities
 
@@ -191,7 +191,7 @@ cosign sign vault-autounseal-operator:distroless
 - name: Build distroless image
   run: |
     ./scripts/build-distroless.sh ${GITHUB_SHA} push
-    
+
 - name: Security scan
   uses: docker/scout-action@v1
   with:
@@ -202,10 +202,10 @@ cosign sign vault-autounseal-operator:distroless
 
 ### 1. **Image Size Optimization**
 - **Before**: Alpine-based image ~45MB
-- **After**: Distroless image ~25MB  
+- **After**: Distroless image ~25MB
 - **Improvement**: 44% size reduction
 
-### 2. **Startup Performance**  
+### 2. **Startup Performance**
 - **Container Start**: 15% faster due to smaller image
 - **Pull Time**: 40% faster registry pulls
 - **Memory Usage**: 10-15MB less runtime memory
@@ -225,7 +225,7 @@ $ docker build -t vault-autounseal-operator:distroless .
 $ docker images vault-autounseal-operator
 REPOSITORY                  TAG          SIZE
 vault-autounseal-operator   distroless   72.2MB
-vault-autounseal-operator   latest       85.4MB  
+vault-autounseal-operator   latest       85.4MB
 ```
 
 ### 2. **Runtime Verification**
@@ -262,7 +262,7 @@ $ docker run --rm --entrypoint="" vault-autounseal-operator:distroless /bin/sh
 - ❌ Shell injection possibilities
 - ❌ Larger image size
 
-### Distroless Container  
+### Distroless Container
 **Pros:**
 - ✅ Minimal attack surface (1 binary)
 - ✅ Zero CVEs in base image
@@ -282,7 +282,7 @@ $ docker run --rm --entrypoint="" vault-autounseal-operator:distroless /bin/sh
 # Use init containers for debugging
 kubectl run debug --rm -it --image=alpine -- /bin/sh
 
-# Use kubectl for log analysis  
+# Use kubectl for log analysis
 kubectl logs deployment/vault-unsealer-operator -f
 
 # Use port-forwarding for diagnostics
@@ -291,7 +291,7 @@ kubectl port-forward deployment/vault-unsealer-operator 8080:8080
 
 ### 2. **Development vs Production**
 - **Development**: Use regular Dockerfile with shell access
-- **Staging**: Test with distroless images  
+- **Staging**: Test with distroless images
 - **Production**: Deploy only distroless images
 
 ### 3. **Monitoring Integration**

@@ -70,8 +70,8 @@ func TestQuickE2E(t *testing.T) {
 			Image:        "hashicorp/vault:1.15.2",
 			ExposedPorts: []string{"8200/tcp"},
 			Env: map[string]string{
-				"VAULT_ADDR":              "http://0.0.0.0:8200",
-				"VAULT_API_ADDR":          "http://0.0.0.0:8200",
+				"VAULT_ADDR":     "http://0.0.0.0:8200",
+				"VAULT_API_ADDR": "http://0.0.0.0:8200",
 				"VAULT_LOCAL_CONFIG": `{
 					"backend": {"file": {"path": "/vault/data"}},
 					"listener": {"tcp": {"address": "0.0.0.0:8200", "tls_disable": true}},
@@ -158,7 +158,7 @@ func TestQuickE2E(t *testing.T) {
 
 	// Test loading keys (we'll mock the K8s client part)
 	t.Log("📋 Testing key deduplication and threshold logic...")
-	
+
 	// Manually combine keys for testing
 	var allKeys []string
 	for _, ref := range secretRefs {
@@ -187,7 +187,7 @@ func TestQuickE2E(t *testing.T) {
 	}
 
 	t.Logf("📊 Loaded %d keys, %d unique keys", len(allKeys), len(uniqueKeys))
-	
+
 	if len(uniqueKeys) != len(vaultKeys) {
 		t.Fatalf("❌ Expected %d unique keys, got %d", len(vaultKeys), len(uniqueKeys))
 	}
@@ -213,14 +213,14 @@ func TestQuickE2E(t *testing.T) {
 
 	for i, key := range unsealKeys {
 		t.Logf("🔑 Using unseal key %d/%d", i+1, len(unsealKeys))
-		
+
 		status, err := vaultClient.Unseal(context.Background(), key)
 		if err != nil {
 			t.Fatalf("❌ Failed to unseal with key %d: %v", i+1, err)
 		}
 
 		t.Logf("📊 Unseal progress: %d/%d (sealed: %t)", status.Progress, status.T, status.Sealed)
-		
+
 		if !status.Sealed {
 			t.Logf("🎉 Vault successfully unsealed after %d keys!", i+1)
 			break
@@ -259,7 +259,7 @@ func TestQuickE2E(t *testing.T) {
 		if err != nil {
 			t.Fatalf("❌ Failed recovery unsealing with key %d: %v", i+1, err)
 		}
-		
+
 		if !status.Sealed {
 			t.Logf("🎉 Recovery successful after %d keys!", i+1)
 			break
@@ -272,7 +272,7 @@ func TestQuickE2E(t *testing.T) {
 	t.Log("🎉 All quick E2E validation steps completed successfully!")
 	t.Log("✅ Core Vault unsealing functionality verified")
 	t.Log("✅ Secret loading and deduplication tested")
-	t.Log("✅ Threshold-based unsealing validated")  
+	t.Log("✅ Threshold-based unsealing validated")
 	t.Log("✅ Failure recovery scenarios tested")
 }
 
@@ -334,7 +334,7 @@ func quickSealVault(vaultURL, rootToken string) error {
 
 func checkVaultSealStatus(vaultURL string) (bool, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	
+
 	resp, err := client.Get(vaultURL + "/v1/sys/seal-status")
 	if err != nil {
 		return false, fmt.Errorf("failed to get seal status: %w", err)

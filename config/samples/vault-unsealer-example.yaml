@@ -11,7 +11,7 @@ spec:
     caBundleSecretRef:
       name: vault-ca-secret
       key: ca.crt
-  
+
   # References to secrets containing unseal keys
   unsealKeysSecretRefs:
     - name: vault-unseal-keys-a
@@ -22,7 +22,7 @@ spec:
 
   # Periodic sync interval for safety checks
   interval: 60s
-  
+
   # Label selector to find Vault pods
   vaultLabelSelector: "app.kubernetes.io/name=vault"
 
