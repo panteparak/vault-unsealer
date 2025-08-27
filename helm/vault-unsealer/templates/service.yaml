@@ -1,0 +1,23 @@
+{{- if .Values.controller.metrics.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vault-unsealer.fullname" . }}-metrics
+  namespace: {{ include "vault-unsealer.namespace" . }}
+  labels:
+    {{- include "vault-unsealer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+  {{- with (include "vault-unsealer.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: {{ .Values.controller.metrics.port }}
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    {{- include "vault-unsealer.selectorLabels" . | nindent 4 }}
+{{- end }}

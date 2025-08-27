@@ -1,0 +1,122 @@
+# Default values for vault-unsealer
+replicaCount: 1
+
+image:
+  repository: your-registry/vault-unsealer
+  pullPolicy: IfNotPresent
+  tag: "v1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Controller configuration
+controller:
+  # Log level (debug, info, warn, error)
+  logLevel: info
+  # Enable leader election for high availability
+  leaderElection: true
+  # Metrics configuration
+  metrics:
+    enabled: true
+    port: 8080
+    # Service monitor for Prometheus operator
+    serviceMonitor:
+      enabled: false
+      namespace: ""
+      labels: {}
+      annotations: {}
+  # Health probe configuration
+  health:
+    port: 8081
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+    - ALL
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations for pod assignment
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+# Affinity rules
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+
+# Deployment strategy
+strategy:
+  type: Recreate
+
+# Environment variables
+env: []
+
+# Additional labels for all resources
+labels: {}
+
+# Additional annotations for all resources
+annotations: {}
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Network policy
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# RBAC configuration
+rbac:
+  create: true
+  # Additional cluster role rules
+  additionalRules: []
+
+# CRD management
+crds:
+  # Whether to install CRDs
+  install: true
+  # Whether to keep CRDs on uninstall
+  keep: true

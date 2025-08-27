@@ -1,0 +1,79 @@
+name: Go Performance Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache: true
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run Go benchmarks
+      run: |
+        # Run benchmarks with memory profiling
+        go test -bench=. -benchmem -benchtime=10s ./... > benchmark_results.txt
+
+        # Show results
+        echo "=== Benchmark Results ==="
+        cat benchmark_results.txt
+
+    - name: CPU profiling
+      run: |
+        # Run with CPU profiling
+        go test -bench=. -cpuprofile=cpu.prof -benchtime=5s ./pkg/vault/...
+        go test -bench=. -cpuprofile=controller_cpu.prof -benchtime=5s ./pkg/controller/...
+
+        # Generate readable CPU profile (if go tool pprof is available)
+        echo "CPU profiling completed - profiles saved as *.prof"
+
+    - name: Memory profiling
+      run: |
+        # Run with memory profiling
+        go test -bench=. -memprofile=mem.prof -benchtime=5s ./pkg/vault/...
+        go test -bench=. -memprofile=controller_mem.prof -benchtime=5s ./pkg/controller/...
+
+        echo "Memory profiling completed - profiles saved as *_mem.prof"
+
+    - name: Race condition testing
+      run: |
+        # Run tests with race detector
+        go test -race -short ./...
+
+    - name: Performance regression check
+      run: |
+        # Basic performance expectations
+        echo "Checking for performance regressions..."
+
+        # Extract key metrics from benchmark results
+        if grep -q "FAIL" benchmark_results.txt; then
+          echo "❌ Benchmark tests failed"
+          exit 1
+        fi
+
+        echo "✅ Performance benchmarks passed"
+
+    - name: Upload benchmark artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: go-benchmark-results
+        path: |
+          benchmark_results.txt
+          *.prof

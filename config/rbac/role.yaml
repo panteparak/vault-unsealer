@@ -1,0 +1,48 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ops.autounseal.vault.io
+  resources:
+  - vaultunsealers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ops.autounseal.vault.io
+  resources:
+  - vaultunsealers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ops.autounseal.vault.io
+  resources:
+  - vaultunsealers/status
+  verbs:
+  - get
+  - patch
+  - update

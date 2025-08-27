@@ -1,0 +1,115 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+!bin/README.md
+*.out
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Kubernetes generated files
+vendor/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Operator SDK / Kubebuilder
+# CRDs generated files
+config/crd/bases/*.yaml.bak
+
+# Test artifacts and coverage
+coverage.txt
+coverage.html
+coverage.out
+*.cover
+*.coverprofile
+
+# Test output and logs
+*.log
+test-*.xml
+junit.xml
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+out/
+
+# Docker
+.docker/
+
+# Generated code
+*.pb.go
+zz_generated.*.go
+
+# Helm charts (if added later)
+charts/*.tgz
+
+# Kubebuilder test environment
+testbin/
+kubebuilder/
+
+# E2E test artifacts
+e2e-*.log
+kind-config.yaml
+kubeconfig
+*.kubeconfig
+
+# CI/CD artifacts
+.github/workflows/*.log
+ci-logs/
+
+# Development certificates
+*.crt
+*.key
+*.pem
+
+# Local development files
+local-config/
+dev-config/
+debug/
+
+# Terraform state files (if used for testing)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Test containers logs
+container-logs/
+
+# Claude Code context (these should be committed, but excluding any temp files)
+claude-code-context/*.tmp
+claude-code-context/.DS_Store

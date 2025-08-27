@@ -1,0 +1,259 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - 'pkg/**/*.go'
+      - 'helm/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '*.md'
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # for GitHub Pages deployment
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache: true
+
+    - name: Install documentation tools
+      run: |
+        # Install MkDocs and plugins
+        pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin
+
+    - name: Generate API documentation
+      run: |
+        mkdir -p docs/api
+
+        # Generate CRD documentation using make
+        make generate-crds
+
+        # Copy generated CRDs to docs
+        if [ -d "generated" ]; then
+          cp generated/*.yaml docs/api/ || echo "No CRDs to copy"
+        fi
+
+        # Generate Go API documentation
+        go doc -all ./pkg/api/v1 > docs/api/go-api.md || echo "No Go API docs generated"
+
+    - name: Build documentation site
+      run: |
+        # Create mkdocs.yml
+        cat > mkdocs.yml << EOF
+        site_name: Vault Auto-Unseal Operator
+        site_description: Kubernetes operator for HashiCorp Vault auto-unsealing
+        site_url: https://panteparak.github.io/vault-unsealer/
+        repo_url: https://github.com/panteparak/vault-unsealer
+        repo_name: panteparak/vault-unsealer
+        edit_uri: edit/main/docs/
+
+        theme:
+          name: material
+          palette:
+            - scheme: default
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-7
+                name: Switch to dark mode
+            - scheme: slate
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-4
+                name: Switch to light mode
+          features:
+            - navigation.tabs
+            - navigation.sections
+            - navigation.expand
+            - navigation.top
+            - search.highlight
+            - content.code.copy
+            - content.code.annotate
+
+        plugins:
+          - search
+          - mermaid2
+
+        nav:
+          - Home: index.md
+          - Getting Started:
+            - Installation: getting-started.md
+            - Configuration Examples: examples.md
+          - User Guide:
+            - Architecture: architecture.md
+            - Security: security.md
+            - Monitoring: monitoring.md
+            - Troubleshooting: troubleshooting.md
+          - API Reference:
+            - CRDs: api/
+            - Go API: api/go-api.md
+          - Development:
+            - Contributing: contributing.md
+            - Release Process: release-process.md
+
+        markdown_extensions:
+          - admonition
+          - pymdownx.details
+          - pymdownx.superfences:
+              custom_fences:
+                - name: mermaid
+                  class: mermaid
+                  format: !!python/name:mermaid2.fence_mermaid
+          - pymdownx.highlight:
+              anchor_linenums: true
+          - pymdownx.inlinehilite
+          - pymdownx.snippets
+          - pymdownx.tabbed:
+              alternate_style: true
+          - tables
+          - footnotes
+        EOF
+
+        # Create docs structure
+        mkdir -p docs/api
+
+        # Copy existing documentation
+        cp README.md docs/index.md
+
+        # Copy docs if they exist
+        if [ -d "docs" ] && [ -f "docs/getting-started.md" ]; then
+          echo "Using existing docs"
+        else
+          echo "Creating basic documentation structure"
+        fi
+
+        # Create missing documentation files
+        cat > docs/architecture.md << EOF
+        # Architecture
+
+        The Vault Auto-Unseal Operator is built using the Kubernetes controller-runtime framework.
+
+        ## Components
+
+        - **Controller**: Manages VaultUnsealConfig resources
+        - **Vault Client**: Secure communication with Vault instances
+        - **CRD**: Custom Resource Definition for configuration
+        - **RBAC**: Minimal required permissions
+
+        ## Workflow
+
+        1. Watch VaultUnsealConfig resources
+        2. Validate configuration and security settings
+        3. Connect to Vault instances securely
+        4. Monitor seal status and unseal when needed
+        5. Update resource status with results
+        EOF
+
+        cat > docs/security.md << EOF
+        # Security
+
+        Security is our top priority. This document outlines security considerations.
+
+        ## Best Practices
+
+        - Store unseal keys in Kubernetes secrets
+        - Enable TLS verification in production
+        - Use least-privilege RBAC
+        - Monitor all operator activities
+        - Rotate unseal keys regularly
+
+        ## Threat Model
+
+        See [SECURITY.md](../SECURITY.md) for detailed security information.
+        EOF
+
+        cat > docs/monitoring.md << EOF
+        # Monitoring
+
+        The operator exposes Prometheus metrics and provides health endpoints.
+
+        ## Metrics
+
+        - \`vault_unseal_attempts_total\`
+        - \`vault_unseal_successes_total\`
+        - \`vault_unseal_failures_total\`
+        - \`vault_instances_sealed\`
+
+        ## Health Endpoints
+
+        - \`:8081/healthz\` - Liveness
+        - \`:8081/readyz\` - Readiness
+        EOF
+
+        cat > docs/troubleshooting.md << EOF
+        # Troubleshooting
+
+        Common issues and solutions.
+
+        ## Operator Not Starting
+
+        Check RBAC permissions and resource limits.
+
+        ## Connection Issues
+
+        Verify network connectivity and TLS configuration.
+
+        ## Debug Mode
+
+        Enable debug logging for detailed information.
+        EOF
+
+        cat > docs/contributing.md << EOF
+        # Contributing
+
+        Contributions are welcome! Please see our development workflow.
+
+        ## Development Setup
+
+        \`\`\`bash
+        git clone https://github.com/panteparak/vault-unsealer.git
+        cd vault-unsealer
+        go mod download
+        make test
+        \`\`\`
+
+        ## Conventional Commits
+
+        We use conventional commits for semantic versioning.
+        EOF
+
+        cat > docs/release-process.md << EOF
+        # Release Process
+
+        Releases are fully automated using semantic versioning.
+
+        ## How It Works
+
+        1. Push conventional commits to main
+        2. Semantic-release analyzes commits
+        3. Generates version and changelog
+        4. Builds and publishes artifacts
+        5. Creates GitHub release
+
+        See README for commit format examples.
+        EOF
+
+        # Build the documentation
+        mkdocs build
+
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./site

@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vault-unsealer.fullname" . }}
+  namespace: {{ include "vault-unsealer.namespace" . }}
+  labels:
+    {{- include "vault-unsealer.labels" . | nindent 4 }}
+  {{- with (include "vault-unsealer.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "vault-unsealer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "vault-unsealer.selectorLabels" . | nindent 8 }}
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+        {{- with (include "vault-unsealer.annotations" .) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "vault-unsealer.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: manager
+        image: {{ include "vault-unsealer.image" . }}
+        imagePullPolicy: {{ include "vault-unsealer.imagePullPolicy" . }}
+        command:
+        - /manager
+        args:
+        {{- if .Values.controller.leaderElection }}
+        - --leader-elect
+        {{- end }}
+        - --metrics-bind-address=0.0.0.0:{{ .Values.controller.metrics.port }}
+        - --health-probe-bind-address=0.0.0.0:{{ .Values.controller.health.port }}
+        ports:
+        {{- if .Values.controller.metrics.enabled }}
+        - name: metrics
+          containerPort: {{ .Values.controller.metrics.port }}
+          protocol: TCP
+        {{- end }}
+        - name: healthz
+          containerPort: {{ .Values.controller.health.port }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        env:
+        - name: LOG_LEVEL
+          value: {{ .Values.controller.logLevel | quote }}
+        {{- with .Values.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

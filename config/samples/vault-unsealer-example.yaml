@@ -1,0 +1,32 @@
+apiVersion: ops.autounseal.vault.io/v1alpha1
+kind: VaultUnsealer
+metadata:
+  name: example-vault-unsealer
+  namespace: vault
+spec:
+  # Connection details for the Vault cluster
+  vault:
+    url: "https://vault.vault.svc:8200"
+    # Optional: Reference to a secret containing the Vault CA bundle
+    caBundleSecretRef:
+      name: vault-ca-secret
+      key: ca.crt
+  
+  # References to secrets containing unseal keys
+  unsealKeysSecretRefs:
+    - name: vault-unseal-keys-a
+      namespace: vault
+      key: keys.json
+    - name: vault-unseal-keys-b
+      key: key.txt
+
+  # Periodic sync interval for safety checks
+  interval: 60s
+  
+  # Label selector to find Vault pods
+  vaultLabelSelector: "app.kubernetes.io/name=vault"
+
+  # Unsealing strategy
+  mode:
+    ha: true
+  keyThreshold: 3

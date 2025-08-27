@@ -1,0 +1,313 @@
+name: Pages and Helm Repository
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Check if docs exist
+      id: check-docs
+      run: |
+        if [ -d "docs" ] && [ -f "docs/package.json" ]; then
+          echo "docs-exist=true" >> $GITHUB_OUTPUT
+          echo "Documentation directory found"
+        else
+          echo "docs-exist=false" >> $GITHUB_OUTPUT
+          echo "No documentation directory found, creating placeholder"
+        fi
+
+    - name: Setup Node.js
+      if: steps.check-docs.outputs.docs-exist == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: npm
+        cache-dependency-path: docs/package-lock.json
+
+    - name: Install dependencies
+      if: steps.check-docs.outputs.docs-exist == 'true'
+      run: |
+        cd docs
+        npm ci
+
+    - name: Build documentation
+      if: steps.check-docs.outputs.docs-exist == 'true'
+      run: |
+        cd docs
+        npm run build
+
+    - name: Generate documentation from README and examples
+      if: steps.check-docs.outputs.docs-exist == 'false'
+      run: |
+        mkdir -p docs-generated
+
+        # Install pandoc for markdown to HTML conversion
+        sudo apt-get update && sudo apt-get install -y pandoc
+
+        # Create main documentation page from README
+        if [ -f "README.md" ]; then
+          pandoc README.md -o docs-generated/index.html \
+            --standalone \
+            --css="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" \
+            --metadata title="Vault Auto-Unseal Operator Documentation"
+        fi
+
+        # Convert examples to documentation pages
+        if [ -d "examples" ]; then
+          mkdir -p docs-generated/examples
+          for file in examples/*.md; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file" .md)
+              pandoc "$file" -o "docs-generated/examples/${filename}.html" \
+                --standalone \
+                --css="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" \
+                --metadata title="$filename - Examples"
+            fi
+          done
+        fi
+
+        # Create navigation index if no README exists
+        if [ ! -f "README.md" ]; then
+          cat > docs-generated/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Documentation - Vault Auto-Unseal Operator</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+        </head>
+        <body>
+            <h1>📚 Vault Auto-Unseal Operator Documentation</h1>
+            <p>Auto-generated documentation for the Kubernetes operator.</p>
+            <h2>Available Documentation</h2>
+            <ul>
+                <li><a href="examples/">Examples</a></li>
+                <li><a href="https://github.com/panteparak/vault-unsealer">GitHub Repository</a></li>
+            </ul>
+        </body>
+        </html>
+        EOF
+        fi
+
+    - name: Upload docs artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: ${{ steps.check-docs.outputs.docs-exist == 'true' && 'docs/dist/' || 'docs-generated/' }}
+
+  build-helm-repo:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version from tag or commit
+      id: version
+      run: |
+        if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION (from tag)"
+        else
+          VERSION="0.1.0-dev"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION (development)"
+        fi
+
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.12.0'
+
+    - name: Install yq
+      run: |
+        sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+        sudo chmod +x /usr/local/bin/yq
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache: true
+
+    - name: Generate CRDs and update chart
+      run: |
+        # Install controller-gen
+        go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0
+
+        # Generate CRDs
+        mkdir -p config/crd/bases
+        $(go env GOPATH)/bin/controller-gen crd:allowDangerousTypes=true paths="./pkg/api/..." output:crd:artifacts:config=config/crd/bases
+
+        # Update chart version
+        sed -i.bak 's/^version: .*/version: ${{ steps.version.outputs.version }}/' helm/vault-unsealer/Chart.yaml
+        sed -i.bak 's/^appVersion: .*/appVersion: "${{ steps.version.outputs.version }}"/' helm/vault-unsealer/Chart.yaml
+        rm -f helm/vault-unsealer/Chart.yaml.bak
+
+        # Copy CRDs to chart templates
+        mkdir -p helm/vault-unsealer/templates/crds/
+        cp config/crd/bases/*.yaml helm/vault-unsealer/templates/crds/ 2>/dev/null || echo "No CRDs to copy"
+
+    - name: Package Helm chart
+      run: |
+        mkdir -p helm-repo
+        helm package helm/vault-unsealer/ --destination helm-repo/
+
+    - name: Download existing Helm packages from GitHub Pages
+      run: |
+        cd helm-repo
+        # Download existing index.yaml from the live site
+        echo "Attempting to download existing Helm repository index..."
+        if curl -fsSL https://panteparak.github.io/vault-unsealer/index.yaml -o existing-index.yaml; then
+          echo "Downloaded existing index.yaml successfully"
+          echo "Current repository contains:"
+          yq '.entries.vault-unsealer[].version' existing-index.yaml 2>/dev/null || echo "No versions found"
+        else
+          echo "No existing index.yaml found or site not accessible"
+          touch existing-index.yaml  # Create empty file to avoid errors
+        fi
+
+        # Download existing .tgz files listed in the index
+        if [ -s existing-index.yaml ]; then
+          echo "Downloading existing chart packages..."
+          yq '.entries.vault-unsealer[].urls[]' existing-index.yaml 2>/dev/null | while read url; do
+            if [[ "$url" == "https://panteparak.github.io/vault-unsealer/"* ]]; then
+              filename=$(basename "$url")
+              echo "Downloading existing package: $filename"
+              curl -fsSL "$url" -o "$filename" || echo "Could not download $filename"
+            fi
+          done
+        fi
+
+    - name: Create Helm repository index with all versions
+      run: |
+        cd helm-repo
+        # Merge with existing index if available and not empty
+        if [ -f "existing-index.yaml" ] && [ -s "existing-index.yaml" ]; then
+          echo "Merging with existing Helm repository..."
+          helm repo index . --url https://panteparak.github.io/vault-unsealer/ --merge existing-index.yaml
+        else
+          echo "Creating new Helm repository index (no valid existing index found)..."
+          helm repo index . --url https://panteparak.github.io/vault-unsealer/
+        fi
+
+    - name: Upload Helm repository artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: helm-repository
+        path: helm-repo/
+
+  combine-and-deploy:
+    needs: [build-docs, build-helm-repo]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Download documentation artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: documentation
+        path: site/docs/
+
+    - name: Download Helm repository artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: helm-repository
+        path: site/
+
+    - name: Create site index
+      run: |
+        cat > site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Vault Auto-Unseal Operator</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    line-height: 1.6;
+                }
+                .header { text-align: center; margin-bottom: 40px; }
+                .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+                .code { background: #f5f5f5; padding: 10px; border-radius: 4px; font-family: monospace; }
+                a { color: #0066cc; text-decoration: none; }
+                a:hover { text-decoration: underline; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🔐 Vault Auto-Unseal Operator</h1>
+                <p>Kubernetes operator for automatically unsealing HashiCorp Vault instances</p>
+            </div>
+
+            <div class="section">
+                <h2>📚 Documentation</h2>
+                <p>Complete documentation for installation, configuration, and usage:</p>
+                <p><a href="./docs/">View Documentation</a></p>
+            </div>
+
+            <div class="section">
+                <h2>⚓ Helm Repository</h2>
+                <p>Install the operator using Helm:</p>
+                <div class="code">
+                    <p>helm repo add vault-operator https://panteparak.github.io/vault-unsealer/</p>
+                    <p>helm repo update</p>
+                    <p>helm install vault-unsealer vault-operator/vault-unsealer</p>
+                </div>
+                <p><a href="./index.yaml">Browse Helm Repository</a></p>
+            </div>
+
+            <div class="section">
+                <h2>🚀 Quick Links</h2>
+                <ul>
+                    <li><a href="https://github.com/panteparak/vault-unsealer">GitHub Repository</a></li>
+                    <li><a href="https://github.com/panteparak/vault-unsealer/releases">Releases</a></li>
+                    <li><a href="https://github.com/panteparak/vault-unsealer/issues">Issues</a></li>
+                </ul>
+            </div>
+        </body>
+        </html>
+        EOF
+
+    - name: List final site structure
+      run: |
+        echo "Final site structure:"
+        find site -type f | head -20
+        echo "..."
+        echo "Total files: $(find site -type f | wc -l)"
+
+    - name: Upload unified Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: site/
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

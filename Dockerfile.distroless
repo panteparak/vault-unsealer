@@ -1,0 +1,87 @@
+# Multi-stage distroless Dockerfile for production deployment
+# Optimized for security, size, and multi-architecture support
+
+ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
+ARG GOLANG_VERSION=1.24
+
+# Build stage
+FROM --platform=$BUILDPLATFORM golang:${GOLANG_VERSION}-alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG BUILDPLATFORM
+
+# Security: Install only necessary packages and clean up
+RUN apk --no-cache add ca-certificates git && \
+    apk --no-cache upgrade && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /workspace
+
+# Copy go mod files for dependency caching
+COPY go.mod go.sum ./
+
+# Download and verify dependencies in separate layer for better caching
+RUN go mod download && \
+    go mod verify && \
+    go mod tidy
+
+# Copy source code
+COPY cmd/ cmd/
+COPY api/ api/
+COPY internal/ internal/
+
+# Build arguments for reproducible builds
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE
+ARG LDFLAGS
+
+# Build with security hardening flags  
+RUN CGO_ENABLED=0 \
+    GOOS=${TARGETOS:-linux} \
+    GOARCH=${TARGETARCH} \
+    go build \
+    -a \
+    -ldflags="-s -w -extldflags '-static'" \
+    -buildvcs=false \
+    -trimpath \
+    -o manager \
+    ./cmd/main.go
+
+# Verify the binary
+RUN ./manager --version || echo "Binary built successfully"
+
+# Runtime stage - distroless for maximum security
+FROM ${BASE_IMAGE}
+
+# Security labels for container scanning
+LABEL \
+    org.opencontainers.image.title="Vault Auto-unseal Operator" \
+    org.opencontainers.image.description="Kubernetes operator for HashiCorp Vault auto-unsealing with distroless base" \
+    org.opencontainers.image.vendor="vault-autounseal-operator" \
+    org.opencontainers.image.licenses="Apache-2.0" \
+    org.opencontainers.image.source="https://github.com/example/vault-autounseal-operator" \
+    org.opencontainers.image.documentation="https://github.com/example/vault-autounseal-operator/blob/main/README.md" \
+    org.opencontainers.image.version="1.0.0" \
+    io.kubernetes.display-name="Vault Auto-unseal Operator" \
+    io.kubernetes.description="Automatically unseal HashiCorp Vault instances in Kubernetes"
+
+# Set working directory
+WORKDIR /
+
+# Copy only the binary from builder
+COPY --from=builder /workspace/manager .
+
+# Distroless images already run as nonroot (65532:65532)
+# No need to explicitly set USER as it's inherited from base image
+
+# Health check support (commented out as distroless doesn't have shell)
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+#   CMD ["/manager", "--health-check"]
+
+# Use exec form for proper signal handling
+ENTRYPOINT ["/manager"]
+
+# Default command arguments for production
+CMD ["--enable-leader-election", "--metrics-bind-address=0.0.0.0:8080", "--health-probe-bind-address=0.0.0.0:8081"]

@@ -1,0 +1,29 @@
+{{- if and .Values.controller.metrics.enabled .Values.controller.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "vault-unsealer.fullname" . }}-metrics
+  namespace: {{ .Values.controller.metrics.serviceMonitor.namespace | default (include "vault-unsealer.namespace" .) }}
+  labels:
+    {{- include "vault-unsealer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+    {{- with .Values.controller.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.controller.metrics.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  endpoints:
+  - path: /metrics
+    port: metrics
+    scheme: http
+  selector:
+    matchLabels:
+      {{- include "vault-unsealer.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: metrics
+  namespaceSelector:
+    matchNames:
+    - {{ include "vault-unsealer.namespace" . }}
+{{- end }}
