@@ -19,6 +19,7 @@ package vault
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -72,8 +73,7 @@ func NewClient(address string, tlsConfig *tls.Config) (*Client, error) {
 }
 
 func (c *Client) GetSealStatus(ctx context.Context) (*SealStatus, error) {
-	req := c.client.NewRequest("GET", "/v1/sys/seal-status")
-	resp, err := c.client.RawRequestWithContext(ctx, req)
+	resp, err := c.client.Logical().ReadRawWithContext(ctx, "sys/seal-status")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get seal status: %w", err)
 	}
@@ -92,12 +92,12 @@ func (c *Client) GetSealStatus(ctx context.Context) (*SealStatus, error) {
 }
 
 func (c *Client) Unseal(ctx context.Context, key string) (*UnsealResponse, error) {
-	req := c.client.NewRequest("POST", "/v1/sys/unseal")
-	if err := req.SetJSONBody(map[string]interface{}{"key": key}); err != nil {
-		return nil, fmt.Errorf("failed to set request body: %w", err)
+	data := map[string]interface{}{"key": key}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal unseal data: %w", err)
 	}
-
-	resp, err := c.client.RawRequestWithContext(ctx, req)
+	resp, err := c.client.Logical().WriteRawWithContext(ctx, "sys/unseal", jsonData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unseal: %w", err)
 	}

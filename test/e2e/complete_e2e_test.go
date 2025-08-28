@@ -631,10 +631,10 @@ func manualUnsealTest(vaultURL string, keys []string, t *testing.T) (bool, error
 			return false, fmt.Errorf("failed to unseal with key %d: %w", i+1, err)
 		}
 		defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			t.Logf("Warning: Failed to close response body: %v", closeErr)
-		}
-	}()
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				t.Logf("Warning: Failed to close response body: %v", closeErr)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)

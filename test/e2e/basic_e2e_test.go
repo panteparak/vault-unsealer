@@ -40,7 +40,6 @@ import (
 	"github.com/panteparak/vault-unsealer/internal/secrets"
 )
 
-
 func cleanKubeconfig(data []byte) ([]byte, error) {
 	// Remove control characters and find where yaml actually starts
 	str := string(data)

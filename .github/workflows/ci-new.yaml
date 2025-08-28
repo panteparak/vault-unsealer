@@ -160,7 +160,7 @@ jobs:
   build:
     name: 🏗️ Build Image
     runs-on: ubuntu-latest
-    needs: 
+    needs:
       - setup
       - unit-tests
       # - lint
