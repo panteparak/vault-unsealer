@@ -56,7 +56,11 @@ func TestQuickE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("❌ Failed to create Docker network: %v", err)
 	}
-	defer dockerNetwork.Remove(ctx)
+	defer func() {
+		if err := dockerNetwork.Remove(ctx); err != nil {
+			t.Logf("Warning: Failed to remove docker network: %v", err)
+		}
+	}()
 
 	stepDuration := time.Since(stepStart)
 	t.Logf("✅ STEP 1 COMPLETED: Network created (took %v)", stepDuration)
@@ -97,7 +101,11 @@ func TestQuickE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("❌ Failed to start Vault: %v", err)
 	}
-	defer vaultContainer.Terminate(ctx)
+	defer func() {
+		if err := vaultContainer.Terminate(ctx); err != nil {
+			t.Logf("Warning: Failed to terminate vault container: %v", err)
+		}
+	}()
 
 	vaultPort, err := vaultContainer.MappedPort(ctx, "8200")
 	if err != nil {
@@ -291,7 +299,9 @@ func quickInitializeVault(vaultURL string) ([]string, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to initialize Vault: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // ignore close error
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -322,7 +332,9 @@ func quickSealVault(vaultURL, rootToken string) error {
 	if err != nil {
 		return fmt.Errorf("failed to seal Vault: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // ignore close error
+	}()
 
 	if resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
@@ -339,7 +351,9 @@ func checkVaultSealStatus(vaultURL string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get seal status: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // ignore close error
+	}()
 
 	var status struct {
 		Sealed bool `json:"sealed"`

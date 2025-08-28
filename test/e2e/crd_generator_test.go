@@ -153,14 +153,14 @@ func TestProgrammaticCRDGeneration(t *testing.T) {
 	// and creating OpenAPI schema definitions, which is what controller-gen does
 
 	// Validate that our types have the necessary metadata
-	if vaultUnsealer.TypeMeta.APIVersion == "" {
-		vaultUnsealer.TypeMeta.APIVersion = gvk.GroupVersion().String()
+	if vaultUnsealer.APIVersion == "" {
+		vaultUnsealer.APIVersion = gvk.GroupVersion().String()
 	}
-	if vaultUnsealer.TypeMeta.Kind == "" {
-		vaultUnsealer.TypeMeta.Kind = gvk.Kind
+	if vaultUnsealer.Kind == "" {
+		vaultUnsealer.Kind = gvk.Kind
 	}
 
-	t.Logf("TypeMeta: APIVersion=%s, Kind=%s", vaultUnsealer.TypeMeta.APIVersion, vaultUnsealer.TypeMeta.Kind)
+	t.Logf("TypeMeta: APIVersion=%s, Kind=%s", vaultUnsealer.APIVersion, vaultUnsealer.Kind)
 
 	t.Log("Programmatic CRD generation concepts validated")
 }

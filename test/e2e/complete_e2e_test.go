@@ -94,7 +94,9 @@ func TestCompleteE2E(t *testing.T) {
 	}
 	defer func() {
 		t.Log("🧹 Terminating Vault container...")
-		vaultContainer.Terminate(ctx)
+		if err := vaultContainer.Terminate(ctx); err != nil {
+			t.Logf("Warning: Failed to terminate vault container: %v", err)
+		}
 	}()
 
 	t.Logf("🔑 Vault deployed at %s with %d keys", vaultURL, len(vaultKeys))
@@ -108,8 +110,12 @@ func TestCompleteE2E(t *testing.T) {
 	stepStart = time.Now()
 
 	scheme := runtime.NewScheme()
-	opsv1alpha1.AddToScheme(scheme)
-	corev1.AddToScheme(scheme)
+	if err := opsv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("❌ Failed to add opsv1alpha1 to scheme: %v", err)
+	}
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatalf("❌ Failed to add corev1 to scheme: %v", err)
+	}
 
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&opsv1alpha1.VaultUnsealer{}).Build()
 
@@ -304,7 +310,7 @@ func TestCompleteE2E(t *testing.T) {
 
 		// If no requeue is requested and no error, we might be done
 		// But always run at least 2 attempts (one for finalizer, one for actual work)
-		if err == nil && result.Requeue == false && result.RequeueAfter == 0 && attempt >= 2 {
+		if err == nil && result.RequeueAfter == 0 && attempt >= 2 {
 			t.Logf("✅ Reconciliation attempt %d completed successfully", attempt)
 			break
 		}
@@ -526,7 +532,11 @@ func initializeVaultWithLogging(vaultURL string, t *testing.T) ([]string, string
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to initialize Vault: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Logf("Warning: Failed to close response body: %v", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -553,7 +563,11 @@ func checkVaultSealStatusDetailed(vaultURL string, t *testing.T) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get seal status: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Logf("Warning: Failed to close response body: %v", closeErr)
+		}
+	}()
 
 	var status struct {
 		Sealed      bool `json:"sealed"`
@@ -586,7 +600,11 @@ func sealVaultWithTokenAndLogging(vaultURL, rootToken string, t *testing.T) erro
 	if err != nil {
 		return fmt.Errorf("failed to seal Vault: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Logf("Warning: Failed to close response body: %v", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
@@ -612,7 +630,11 @@ func manualUnsealTest(vaultURL string, keys []string, t *testing.T) (bool, error
 		if err != nil {
 			return false, fmt.Errorf("failed to unseal with key %d: %w", i+1, err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Logf("Warning: Failed to close response body: %v", closeErr)
+		}
+	}()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)

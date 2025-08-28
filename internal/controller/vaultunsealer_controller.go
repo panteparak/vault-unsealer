@@ -97,7 +97,7 @@ func (r *VaultUnsealerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// Handle deletion
-	if vaultUnsealer.ObjectMeta.DeletionTimestamp.IsZero() {
+	if vaultUnsealer.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, ensure finalizer is present
 		if !controllerutil.ContainsFinalizer(&vaultUnsealer, VaultUnsealerFinalizer) {
 			controllerutil.AddFinalizer(&vaultUnsealer, VaultUnsealerFinalizer)
@@ -156,14 +156,18 @@ func (r *VaultUnsealerReconciler) reconcileVaultUnsealer(ctx context.Context, va
 		log.Error(err, "Failed to get Vault pods")
 		metrics.ReconciliationErrors.WithLabelValues(vaultUnsealer.Name, vaultUnsealer.Namespace, "pod_discovery").Inc()
 		r.setCondition(vaultUnsealer, ConditionTypePodUnavailable, ConditionStatusTrue, ReasonPodNotReady, err.Error())
-		r.updateStatus(ctx, vaultUnsealer)
+		if updateErr := r.updateStatus(ctx, vaultUnsealer); updateErr != nil {
+			log.Error(updateErr, "Failed to update status after pod discovery error")
+		}
 		return ctrl.Result{RequeueAfter: defaultInterval}, err
 	}
 
 	if len(pods) == 0 {
 		log.Info("No Vault pods found matching label selector", "labelSelector", vaultUnsealer.Spec.VaultLabelSelector)
 		r.setCondition(vaultUnsealer, ConditionTypePodUnavailable, ConditionStatusTrue, ReasonPodNotReady, "No pods found")
-		r.updateStatus(ctx, vaultUnsealer)
+		if updateErr := r.updateStatus(ctx, vaultUnsealer); updateErr != nil {
+			log.Error(updateErr, "Failed to update status after no pods found")
+		}
 		return ctrl.Result{RequeueAfter: defaultInterval}, nil
 	}
 
@@ -172,7 +176,9 @@ func (r *VaultUnsealerReconciler) reconcileVaultUnsealer(ctx context.Context, va
 		log.Error(err, "Failed to load unseal keys")
 		metrics.ReconciliationErrors.WithLabelValues(vaultUnsealer.Name, vaultUnsealer.Namespace, "keys_loading").Inc()
 		r.setCondition(vaultUnsealer, ConditionTypeKeysMissing, ConditionStatusTrue, ReasonKeysMissing, err.Error())
-		r.updateStatus(ctx, vaultUnsealer)
+		if updateErr := r.updateStatus(ctx, vaultUnsealer); updateErr != nil {
+			log.Error(updateErr, "Failed to update status after key loading error")
+		}
 		return ctrl.Result{RequeueAfter: defaultInterval}, err
 	}
 

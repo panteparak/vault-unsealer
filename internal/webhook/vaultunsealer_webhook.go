@@ -276,11 +276,15 @@ func (v *VaultUnsealerValidator) validateInterval(interval metav1.Duration) fiel
 	if duration.Seconds() < 10 {
 		// Note: This would be a warning in real implementation, but field.ErrorList doesn't support warnings
 		// In practice, you'd return this as a warning through the admission.Warnings return value
+		// For now, just add a note that this is a very short interval
+		vaultunsealeradmissionlog.Info("Interval is very short, consider using a longer interval", "seconds", duration.Seconds())
 	}
 
 	// Warn about very long intervals (more than 1 hour)
 	if duration.Seconds() > 3600 {
 		// Note: This would be a warning in real implementation
+		// For now, just add a note that this is a very long interval
+		vaultunsealeradmissionlog.Info("Interval is very long, consider using a shorter interval", "seconds", duration.Seconds())
 	}
 
 	return allErrs

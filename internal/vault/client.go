@@ -23,6 +23,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/vault/api"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type Client struct {
@@ -76,7 +77,11 @@ func (c *Client) GetSealStatus(ctx context.Context) (*SealStatus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get seal status: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.FromContext(ctx).Error(closeErr, "Failed to close response body")
+		}
+	}()
 
 	var status SealStatus
 	if err := resp.DecodeJSON(&status); err != nil {
@@ -96,7 +101,11 @@ func (c *Client) Unseal(ctx context.Context, key string) (*UnsealResponse, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to unseal: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.FromContext(ctx).Error(closeErr, "Failed to close response body")
+		}
+	}()
 
 	var unsealResp UnsealResponse
 	if err := resp.DecodeJSON(&unsealResp); err != nil {

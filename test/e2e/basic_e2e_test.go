@@ -40,12 +40,6 @@ import (
 	"github.com/panteparak/vault-unsealer/internal/secrets"
 )
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 func cleanKubeconfig(data []byte) ([]byte, error) {
 	// Remove control characters and find where yaml actually starts
@@ -193,13 +187,14 @@ func startK3sContainer(ctx context.Context) (testcontainers.Container, error) {
 
 func setupKubernetesClient(ctx context.Context, container testcontainers.Container) (client.Client, kubernetes.Interface, error) {
 	// First check if the kubeconfig file exists and list directory contents
-	exitCode, reader, err := container.Exec(ctx, []string{"ls", "-la", "/output/"})
+	_, reader, err := container.Exec(ctx, []string{"ls", "-la", "/output/"})
 	if err == nil {
 		output, _ := io.ReadAll(reader)
 		_ = output // Suppress debug output
 	}
 
 	// Try the default k3s kubeconfig location first
+	var exitCode int
 	exitCode, reader, err = container.Exec(ctx, []string{"cat", "/etc/rancher/k3s/k3s.yaml"})
 	if err != nil {
 		return nil, nil, err
