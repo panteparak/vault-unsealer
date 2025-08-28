@@ -1,0 +1,64 @@
+# Test environment version configuration
+# This file defines the default versions for test infrastructure components
+# These can be overridden using environment variables
+
+# HashiCorp Vault versions for testing
+vault:
+  # Default version used in tests
+  default: "1.19.0"
+  
+  # Supported versions for compatibility testing
+  supported:
+    - "1.19.0"
+    - "1.18.4" 
+    - "1.17.7"
+  
+  # Minimum required version  
+  minimum: "1.17.0"
+
+# Kubernetes versions for E2E testing
+k3s:
+  # Default k3s version (can be overridden with K3S_VERSION env var)
+  default: "v1.30.8-k3s1"
+  
+  # Supported k3s versions for compatibility testing
+  supported:
+    - "v1.31.4-k3s1"
+    - "v1.30.8-k3s1"
+    - "v1.29.12-k3s1"
+  
+  # Minimum required version
+  minimum: "v1.28.0-k3s1"
+
+# Go version for testing (should match go.mod)
+golang:
+  version: "1.24.6"
+
+# Container runtime versions
+docker:
+  version: "24.0"
+
+# Test timeouts and configuration
+timeouts:
+  # Unit test timeout
+  unit: "10m"
+  
+  # Integration test timeout
+  integration: "15m"
+  
+  # E2E test timeout
+  e2e: "25m"
+  
+  # Container startup timeout
+  container: "5m"
+
+# Test parallelism settings
+parallelism:
+  # Number of parallel unit test processes
+  unit: 4
+  
+  # Number of parallel E2E test processes  
+  e2e: 2
+  
+  # Number of parallel integration test processes
+  integration: 2

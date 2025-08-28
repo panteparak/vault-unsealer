@@ -27,7 +27,10 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.24.6"
+  # Test environment versions (can be overridden)
+  VAULT_VERSION: ${{ vars.VAULT_VERSION || '1.19.0' }}
+  K3S_VERSION: ${{ vars.K3S_VERSION || 'v1.31.4-k3s1' }}
 
 # Required permissions for reusable workflows
 permissions:
@@ -60,7 +63,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup
         with:
-          go-version: "1.24"
+          go-version: "1.24.6"
           setup-docker: true
           cache-prefix: ci-primary
 

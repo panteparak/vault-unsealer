@@ -20,7 +20,7 @@ inputs:
   go-version:
     description: 'Go version for build args'
     required: false
-    default: '1.24'
+    default: '1.24.6'
   build-args:
     description: 'Additional build arguments (JSON array)'
     required: false
@@ -129,10 +129,10 @@ runs:
         docker inspect "$FIRST_TAG" > image-inspect.json
 
         # Test image can run (basic smoke test)
-        if docker run --rm --entrypoint="" "$FIRST_TAG" which vault-unsealer >/dev/null 2>&1; then
-          echo "✅ Image smoke test passed"
+        if docker run --rm --entrypoint="" "$FIRST_TAG" ls -la /manager >/dev/null 2>&1; then
+          echo "✅ Image smoke test passed - manager binary found"
         else
-          echo "⚠️ Image smoke test failed - binary not found"
+          echo "❌ Image smoke test failed - manager binary not found"
           exit 1
         fi
 
