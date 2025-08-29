@@ -59,17 +59,21 @@ runs:
       run: |
         echo "🔧 Setting up E2E test dependencies..."
 
-        # Load versions from config or use provided values
+        # Load versions from inputs, environment, or config
         if [[ -n "${{ inputs.vault-version }}" ]]; then
           VAULT_VERSION="${{ inputs.vault-version }}"
+        elif [[ -n "${VAULT_VERSION}" ]]; then
+          VAULT_VERSION="${VAULT_VERSION}"
         else
-          VAULT_VERSION="1.19.0"  # Default value since config was merged
+          VAULT_VERSION="1.19.0"  # Default fallback
         fi
 
         if [[ -n "${{ inputs.k3s-version }}" ]]; then
           K3S_VERSION="${{ inputs.k3s-version }}"
+        elif [[ -n "${K3S_VERSION}" ]]; then
+          K3S_VERSION="${K3S_VERSION}"
         else
-          K3S_VERSION="v1.30.8-k3s1"  # Default value since config was merged
+          K3S_VERSION="v1.31.4-k3s1"  # Updated default
         fi
 
         echo "VAULT_VERSION=$VAULT_VERSION" >> $GITHUB_ENV
